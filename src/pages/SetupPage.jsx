@@ -74,9 +74,10 @@ export default function SetupPage() {
         const data = await res.json();
         if (!res.ok) return;
         setPairing(p => ({ ...p, status: data.status, connected: !!data.connected, bridgeId: data.bridgeId || p.bridgeId }));
+        // Save bridgeId as soon as paired — don't wait for WS connected
+        if (data.bridgeId) setBridge(data.bridgeId);
         if (data.connected && data.bridgeId) {
           clearInterval(pollRef.current);
-          setBridge(data.bridgeId);
           setTimeout(() => setStep(2), 600);
         }
       } catch {}
