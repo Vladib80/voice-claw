@@ -21,14 +21,14 @@ const OPENCLAW_CONFIG_SNIPPET = `{
 }`;
 
 const RESTART_CMD = 'openclaw gateway restart';
-const DEFAULT_GATEWAY_URL = 'http://localhost:18789';
+const DEFAULT_GATEWAY_URL = 'http://127.0.0.1:18789';
 const INSTALL_CMD_MAC = 'curl -fsSL https://www.voiceclaw.io/install.sh | bash';
 const INSTALL_CMD_WIN = 'irm https://www.voiceclaw.io/install.ps1 | iex';
 
 const GATEWAY_PRESETS = [
-  { id: 'openclaw',   label: 'OpenClaw',   url: 'http://localhost:18789',    tokenRequired: true,  tokenLabel: 'Auth Token',            tokenPlaceholder: 'oc_••••••••',   tokenHint: 'The token from gateway.auth.token in your openclaw.json', hint: 'Your OpenClaw AI agent gateway', local: true },
-  { id: 'ollama',     label: 'Ollama',     url: 'http://localhost:11434',    tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Run: ollama serve — no token needed', local: true },
-  { id: 'lmstudio',  label: 'LM Studio',  url: 'http://localhost:1234',     tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Start LM Studio → Local Server tab — no token needed', local: true },
+  { id: 'openclaw',   label: 'OpenClaw',   url: 'http://127.0.0.1:18789',    tokenRequired: true,  tokenLabel: 'Auth Token',            tokenPlaceholder: 'oc_••••••••',   tokenHint: 'The token from gateway.auth.token in your openclaw.json', hint: 'Your OpenClaw AI agent gateway', local: true },
+  { id: 'ollama',     label: 'Ollama',     url: 'http://127.0.0.1:11434',    tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Run: ollama serve — no token needed', local: true },
+  { id: 'lmstudio',  label: 'LM Studio',  url: 'http://127.0.0.1:1234',     tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Start LM Studio → Local Server tab — no token needed', local: true },
   { id: 'openrouter', label: 'OpenRouter', url: 'https://openrouter.ai/api', tokenRequired: true, tokenLabel: 'OpenRouter API Key',    tokenPlaceholder: 'sk-or-v1-...',  tokenHint: 'Get one at openrouter.ai/keys — routes to 100+ models', hint: 'Access 100+ models (Claude, GPT-4, Llama) with one key' },
   { id: 'openai',    label: 'OpenAI',     url: 'https://api.openai.com',    tokenRequired: true,  tokenLabel: 'OpenAI API Key',        tokenPlaceholder: 'sk-proj-...',   tokenHint: 'Get one at platform.openai.com/api-keys', hint: 'GPT-4o, o1, and other OpenAI models' },
   { id: 'anthropic', label: 'Claude',     url: null,                        tokenRequired: true,  tokenLabel: 'Anthropic API Key',     tokenPlaceholder: 'sk-ant-...',    tokenHint: 'Get one at console.anthropic.com', hint: null, bridgeOnly: true },
