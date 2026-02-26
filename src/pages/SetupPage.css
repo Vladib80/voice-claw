@@ -1,0 +1,515 @@
+/* ── Setup Page ── */
+
+.setup {
+  min-height: 100dvh;
+  background: #0a0e1a;
+  color: #e2e8f0;
+  font-family: 'Space Grotesk', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 20px 40px;
+}
+
+.setup-header {
+  text-align: center;
+  margin-bottom: 32px;
+  animation: fade-up 0.4s ease both;
+}
+
+.setup-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #c0c8d8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.setup-subtitle {
+  font-size: 0.78rem;
+  color: #475569;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* Progress steps */
+.setup-progress {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 32px;
+  animation: fade-up 0.4s ease 0.1s both;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  transition: color 0.3s;
+}
+
+.step-item--active { color: #8b5cf6; }
+.step-item--done { color: #22c55e; }
+
+.step-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+
+.step-item--active .step-dot { background: rgba(139, 92, 246, 0.15); }
+.step-item--done .step-dot { background: rgba(34, 197, 94, 0.1); }
+
+.step-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.step-line {
+  width: 32px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 8px;
+}
+
+/* Card */
+.setup-card {
+  width: 100%;
+  max-width: 460px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(192, 200, 216, 0.1);
+  border-radius: 16px;
+  padding: 32px;
+  animation: fade-up 0.4s ease 0.15s both;
+}
+
+.setup-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  animation: fade-up 0.3s ease both;
+}
+
+.setup-step--center {
+  align-items: center;
+  text-align: center;
+}
+
+.setup-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+
+.setup-desc {
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: #64748b;
+  margin: 0 0 24px;
+}
+
+/* Form */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.form-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+.form-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(192, 200, 216, 0.15);
+  border-radius: 8px;
+  padding: 11px 14px;
+  color: #e2e8f0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.form-input--mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.form-hint {
+  font-size: 0.72rem;
+  color: #334155;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Setup mode switch */
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.mode-btn {
+  border: 1px solid rgba(192, 200, 216, 0.15);
+  background: rgba(255,255,255,0.03);
+  color: #94a3b8;
+  border-radius: 8px;
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.mode-btn--active {
+  border-color: rgba(139, 92, 246, 0.5);
+  color: #c4a0ff;
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.bridge-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.pair-code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pair-code {
+  flex: 1;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #d8b4fe;
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+}
+
+.icon-btn {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: #94a3b8;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.cmd-box { margin-top: 2px; }
+
+.os-warn {
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: #fbbf24;
+  background: rgba(234,179,8,0.07);
+  border: 1px solid rgba(234,179,8,0.2);
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-bottom: 10px;
+}
+
+/* OpenClaw setup guide */
+.setup-guide {
+  margin-bottom: 18px;
+  border: 1px solid rgba(192, 200, 216, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.setup-guide-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  background: rgba(255,255,255,0.03);
+  border: none;
+  color: #94a3b8;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s;
+}
+
+.setup-guide-toggle:hover { background: rgba(255,255,255,0.06); }
+.setup-guide-toggle svg { color: #8b5cf6; flex-shrink: 0; }
+.setup-guide-toggle span:first-of-type { flex: 1; }
+
+.setup-guide-body {
+  padding: 14px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setup-guide-step {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 6px 0 4px;
+}
+
+.copy-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.setup-code {
+  flex: 1;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: #a5b4c8;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.6;
+}
+
+/* Tailscale tip */
+.tailscale-tip {
+  background: rgba(139, 92, 246, 0.06);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 4px;
+}
+
+.tailscale-tip-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #a78bfa;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.tailscale-tip-body {
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: #64748b;
+  margin: 0;
+}
+
+.tailscale-tip-body a {
+  color: #a78bfa;
+  text-decoration: none;
+}
+.tailscale-tip-body a:hover { text-decoration: underline; }
+
+/* Buttons */
+.setup-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #8b5cf6;
+  border: none;
+  color: #fff;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 13px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+  width: 100%;
+  margin-top: 8px;
+  letter-spacing: 0.02em;
+}
+
+.setup-btn:hover:not(:disabled) { background: #7c3aed; }
+.setup-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.setup-btn--ghost {
+  background: transparent;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #c4a0ff;
+}
+
+.setup-btn--ghost:hover:not(:disabled) { background: rgba(139, 92, 246, 0.1); }
+
+/* Test UI */
+.test-box {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.test-url {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: #64748b;
+  word-break: break-all;
+}
+
+.test-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+  padding: 10px 0;
+}
+
+.test-status--loading { color: #94a3b8; }
+.test-status--ok { color: #22c55e; }
+.test-status--error { color: #f87171; }
+
+.test-box-error {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Success */
+.success-orb {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Footer note */
+.setup-footer-note {
+  font-size: 0.72rem;
+  color: #1e293b;
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 20px;
+  text-align: center;
+  animation: fade-up 0.4s ease 0.3s both;
+}
+
+/* Spin animation */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+  .setup-card { padding: 24px 18px; }
+  .step-line { width: 20px; }
+}
+
+/* -- Bridge Onboarding Sub-steps -- */
+.bridge-substep {
+  display: flex;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: opacity 0.3s;
+}
+.bridge-substep:last-child { border-bottom: none; }
+
+.bridge-substep--waiting { opacity: 0.35; }
+.bridge-substep--active  { opacity: 1; }
+.bridge-substep--done    { opacity: 0.7; }
+
+.bridge-substep-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+.bridge-substep--done .bridge-substep-icon  { background: rgba(16,185,129,0.15); color: #10b981; }
+.bridge-substep--active .bridge-substep-icon { background: rgba(124,58,237,0.2); color: #a78bfa; }
+.bridge-substep--waiting .bridge-substep-icon { background: rgba(255,255,255,0.05); color: #475569; }
+
+.bridge-substep-body { flex: 1; min-width: 0; }
+
+.bridge-substep-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 0 0 6px;
+}
+.bridge-substep--done .bridge-substep-label  { color: #10b981; }
+.bridge-substep--waiting .bridge-substep-label { color: #64748b; }
+
+.bridge-substep-hint {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
