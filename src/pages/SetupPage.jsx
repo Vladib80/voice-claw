@@ -10,6 +10,7 @@ const INSTALL_CMD_MAC = 'curl -fsSL https://www.voiceclaw.io/install.sh | bash';
 const INSTALL_CMD_WIN = 'irm https://www.voiceclaw.io/install.ps1 | iex';
 
 const GATEWAY_PRESETS = [
+  { id: 'openclaw',   label: 'OpenClaw',   url: 'http://127.0.0.1:18789',    tokenRequired: true,  tokenLabel: 'Gateway Token',         tokenPlaceholder: 'your-gateway-token', tokenHint: 'Find it in ~/.openclaw/openclaw.json → gateway.auth.token', hint: 'Your OpenClaw AI agent (enable chatCompletions endpoint first)', local: true },
   { id: 'ollama',     label: 'Ollama',     url: 'http://127.0.0.1:11434',    tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Run: ollama serve — no token needed', local: true },
   { id: 'lmstudio',  label: 'LM Studio',  url: 'http://127.0.0.1:1234',     tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Start LM Studio → Local Server tab — no token needed', local: true },
   { id: 'openrouter', label: 'OpenRouter', url: 'https://openrouter.ai/api', tokenRequired: true,  tokenLabel: 'OpenRouter API Key',    tokenPlaceholder: 'sk-or-v1-...',  tokenHint: 'Get one at openrouter.ai/keys — routes to 100+ models', hint: 'Access 100+ models (Claude, GPT-4, Llama) with one key' },
@@ -21,7 +22,7 @@ const GATEWAY_PRESETS = [
 export default function SetupPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [url, setUrl] = useState(GATEWAY_PRESETS[0].url || '');
+  const [url, setUrl] = useState(GATEWAY_PRESETS[0]?.url || 'http://127.0.0.1:18789');
   const [token, setToken] = useState('');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null); // null | 'ok' | 'error'
@@ -32,7 +33,7 @@ export default function SetupPage() {
   const [openaiKey, setOpenaiKey] = useState('');
   const [groqKey, setGroqKey] = useState('');
   const [copiedKey, setCopiedKey] = useState('');
-  const [gatewayPreset, setGatewayPreset] = useState('ollama');
+  const [gatewayPreset, setGatewayPreset] = useState('openclaw');
   const [timeLeft, setTimeLeft] = useState(null);
   const pollRef = useRef(null);
   const countdownRef = useRef(null);
