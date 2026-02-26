@@ -324,7 +324,7 @@ app.post('/api/transcribe', (req, res) => {
       const json = JSON.parse(result.raw.toString());
       if (json.error) return res.status(500).json({ error: json.error.message });
 
-      // Filter Whisper hallucinations (silence → "Thank you" etc.)
+      // Filter Whisper hallucinations (silence → "Thank you" / Japanese / etc.)
       const HALLUCINATIONS = [
         'thank you', 'thanks', 'you', 'thank you.', 'thanks.',
         'bye', 'bye.', 'goodbye', 'see you', 'okay', 'ok',
@@ -334,7 +334,13 @@ app.post('/api/transcribe', (req, res) => {
         'the end', 'silence', 'so', 'um', 'uh',
       ];
       const trimmed = (json.text || '').trim().toLowerCase();
-      if (trimmed.length < 3 || HALLUCINATIONS.includes(trimmed)) {
+
+      // Detect CJK hallucinations — Whisper invents Japanese/Chinese/Korean on silence
+      const CJK_REGEX = /[\u3000-\u9fff\uac00-\ud7af\uf900-\ufaff]/g;
+      const cjkMatches = (trimmed.match(CJK_REGEX) || []).length;
+      const cjkRatio = trimmed.length > 0 ? cjkMatches / trimmed.length : 0;
+
+      if (trimmed.length < 3 || HALLUCINATIONS.includes(trimmed) || cjkRatio > 0.3) {
         return res.json({ text: '', skipped: true });
       }
 
@@ -366,51 +372,44 @@ app.post('/api/respond', async (req, res) => {
     ];
 
     let responseText;
+    const hasGateway = !!(gatewayUrl && gatewayToken);
+    const hasBridge = !!bridgeId;
 
-    // 1. LLM — prefer Bridge, then direct gateway, then fallback OpenAI
-    // Each tier falls through to the next on failure instead of crashing
-    let llmError = null;
+    // 1. LLM routing — user's agent ALWAYS responds when a gateway/bridge is configured.
+    // OpenAI fallback is ONLY used in demo mode (no gateway set up at all).
+    // If a gateway is configured but unreachable → surface the error; never swap to a different AI silently.
 
-    if (bridgeId) {
-      try {
-        const br = await invokeBridge(bridgeId, 'chatCompletions', {
-          model: 'claude-sonnet-4-6',
-          max_tokens: 300,
-          messages,
-        });
-        if (br.error) throw new Error('Bridge: ' + br.error);
-        responseText = br.choices?.[0]?.message?.content || br.output_text || '';
-        if (!responseText) throw new Error('Bridge returned empty response');
-      } catch (err) {
-        llmError = err.message;
-        console.warn('Bridge failed, falling through:', err.message);
-      }
-    }
+    if (hasBridge) {
+      // Bridge mode — route through user's local OpenClaw daemon
+      const br = await invokeBridge(bridgeId, 'chatCompletions', {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 300,
+        messages,
+      });
+      if (br.error) throw new Error('Bridge: ' + br.error);
+      responseText = br.choices?.[0]?.message?.content || br.output_text || '';
+      if (!responseText) throw new Error('Bridge returned empty response');
 
-    if (!responseText && gatewayUrl && gatewayToken) {
-      try {
-        const gwResult = await gatewayPost(gatewayUrl, '/v1/chat/completions', gatewayToken, {
-          model: 'claude-sonnet-4-6',
-          max_tokens: 300,
-          messages,
-        });
-        const gwJson = JSON.parse(gwResult.raw.toString());
-        if (gwJson.error) throw new Error('Gateway: ' + (gwJson.error.message || JSON.stringify(gwJson.error)));
-        responseText = gwJson.choices[0].message.content;
-      } catch (err) {
-        llmError = err.message;
-        console.warn('Gateway failed, falling through to OpenAI:', err.message);
-      }
-    }
+    } else if (hasGateway) {
+      // Direct gateway mode — route to user's OpenClaw gateway URL
+      const gwResult = await gatewayPost(gatewayUrl, '/v1/chat/completions', gatewayToken, {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 300,
+        messages,
+      });
+      const gwJson = JSON.parse(gwResult.raw.toString());
+      if (gwJson.error) throw new Error('Gateway: ' + (gwJson.error.message || JSON.stringify(gwJson.error)));
+      responseText = gwJson.choices[0].message.content;
 
-    if (!responseText) {
+    } else {
+      // Demo mode — no gateway configured, use OpenAI so the app isn't a dead end
       const chatResult = await httpsPost(
         'api.openai.com', '/v1/chat/completions',
         { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
         { model: 'gpt-4o', max_tokens: 300, messages }
       );
       const chatJson = JSON.parse(chatResult.raw.toString());
-      if (chatJson.error) throw new Error('OpenAI: ' + chatJson.error.message);
+      if (chatJson.error) throw new Error('OpenAI demo: ' + chatJson.error.message);
       responseText = chatJson.choices[0].message.content;
     }
 
