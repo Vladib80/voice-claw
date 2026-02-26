@@ -561,8 +561,26 @@ app.post('/api/respond', respondLimiter, async (req, res) => {
       if (gwJson.error) throw new Error('Gateway: ' + (gwJson.error.message || JSON.stringify(gwJson.error)));
       responseText = gwJson.choices[0].message.content;
 
+    } else if (process.env.OPENAI_API_KEY || userOpenaiKey) {
+      // Standalone fallback — use GPT-4o directly (BYOK / server env key)
+      const apiKey = userOpenaiKey || process.env.OPENAI_API_KEY;
+      const chatBody = JSON.stringify({ model: 'gpt-4o', max_tokens: 300, messages });
+      const chatResult = await new Promise((resolve, reject) => {
+        const opts = {
+          hostname: 'api.openai.com', path: '/v1/chat/completions', method: 'POST',
+          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(chatBody) },
+        };
+        const r = require('https').request(opts, res2 => {
+          const cs = []; res2.on('data', c => cs.push(c)); res2.on('end', () => resolve({ status: res2.statusCode, raw: Buffer.concat(cs) }));
+        });
+        r.on('error', reject); r.write(chatBody); r.end();
+      });
+      const chatJson = JSON.parse(chatResult.raw.toString());
+      if (chatJson.error) throw new Error('OpenAI: ' + chatJson.error.message);
+      responseText = chatJson.choices[0].message.content;
+
     } else {
-      return res.status(400).json({ error: 'No gateway configured. Complete setup at /setup.' });
+      return res.status(400).json({ error: 'No gateway or API key configured. Complete setup at /setup.' });
     }
 
     // Cap TTS input — prevents abuse and controls API costs
