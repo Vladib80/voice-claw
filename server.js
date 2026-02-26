@@ -368,25 +368,42 @@ app.post('/api/respond', async (req, res) => {
     let responseText;
 
     // 1. LLM — prefer Bridge, then direct gateway, then fallback OpenAI
+    // Each tier falls through to the next on failure instead of crashing
+    let llmError = null;
+
     if (bridgeId) {
-      const br = await invokeBridge(bridgeId, 'chatCompletions', {
-        model: 'claude-sonnet-4-6',
-        max_tokens: 300,
-        messages,
-      });
-      if (br.error) throw new Error('Bridge: ' + br.error);
-      responseText = br.choices?.[0]?.message?.content || br.output_text || '';
-      if (!responseText) throw new Error('Bridge returned empty response');
-    } else if (gatewayUrl && gatewayToken) {
-      const gwResult = await gatewayPost(gatewayUrl, '/v1/chat/completions', gatewayToken, {
-        model: 'claude-sonnet-4-6',
-        max_tokens: 300,
-        messages,
-      });
-      const gwJson = JSON.parse(gwResult.raw.toString());
-      if (gwJson.error) throw new Error('Gateway: ' + (gwJson.error.message || JSON.stringify(gwJson.error)));
-      responseText = gwJson.choices[0].message.content;
-    } else {
+      try {
+        const br = await invokeBridge(bridgeId, 'chatCompletions', {
+          model: 'claude-sonnet-4-6',
+          max_tokens: 300,
+          messages,
+        });
+        if (br.error) throw new Error('Bridge: ' + br.error);
+        responseText = br.choices?.[0]?.message?.content || br.output_text || '';
+        if (!responseText) throw new Error('Bridge returned empty response');
+      } catch (err) {
+        llmError = err.message;
+        console.warn('Bridge failed, falling through:', err.message);
+      }
+    }
+
+    if (!responseText && gatewayUrl && gatewayToken) {
+      try {
+        const gwResult = await gatewayPost(gatewayUrl, '/v1/chat/completions', gatewayToken, {
+          model: 'claude-sonnet-4-6',
+          max_tokens: 300,
+          messages,
+        });
+        const gwJson = JSON.parse(gwResult.raw.toString());
+        if (gwJson.error) throw new Error('Gateway: ' + (gwJson.error.message || JSON.stringify(gwJson.error)));
+        responseText = gwJson.choices[0].message.content;
+      } catch (err) {
+        llmError = err.message;
+        console.warn('Gateway failed, falling through to OpenAI:', err.message);
+      }
+    }
+
+    if (!responseText) {
       const chatResult = await httpsPost(
         'api.openai.com', '/v1/chat/completions',
         { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
