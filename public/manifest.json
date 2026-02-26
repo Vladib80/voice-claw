@@ -1,7 +1,7 @@
 {
   "name": "VoiceClaw",
   "short_name": "VoiceClaw",
-  "description": "Talk to your OpenClaw AI agent by voice",
+  "description": "Your voice. Your AI. Any device.",
   "theme_color": "#0a0e1a",
   "background_color": "#0a0e1a",
   "display": "standalone",

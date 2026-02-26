@@ -31,6 +31,7 @@ export function useVoiceSession(voice = 'onyx') {
   const historyRef = useRef([]);
   const playbackCtxRef = useRef(null); // persistent AudioContext for TTS playback
   const currentSourceRef = useRef(null);
+  const manualStopRef = useRef(false); // true when user explicitly stops recording
 
   const updateState = useCallback((s) => {
     stateRef.current = s;
@@ -74,6 +75,7 @@ export function useVoiceSession(voice = 'onyx') {
   }, []);
 
   const stopAll = useCallback(() => {
+    manualStopRef.current = true;
     cleanup();
     updateState(STATES.IDLE);
     setStatusText('Tap to start');
@@ -255,6 +257,7 @@ export function useVoiceSession(voice = 'onyx') {
 
   const stopRecording = useCallback(() => {
     if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
+    manualStopRef.current = true;
     mediaRecorderRef.current.stop();
   }, []);
 
@@ -307,9 +310,16 @@ export function useVoiceSession(voice = 'onyx') {
         const effectiveMime = recorder.mimeType || mimeType || 'audio/webm';
         const blob = new Blob(chunksRef.current, { type: effectiveMime });
 
+        const wasManual = manualStopRef.current;
+        manualStopRef.current = false;
+
         if (blob.size < 1000) {
-          if (stateRef.current === STATES.LISTENING || stateRef.current === STATES.PROCESSING) {
+          // Only auto-restart if silence-detection stopped (not user tap/hold)
+          if (!wasManual && (stateRef.current === STATES.LISTENING || stateRef.current === STATES.PROCESSING)) {
             startListening();
+          } else {
+            updateState(STATES.IDLE);
+            setStatusText('Tap to start');
           }
           return;
         }

@@ -1,10 +1,16 @@
 # VoiceClaw
 
-**A universal voice interface for any AI. Talk to Ollama, Claude, OpenClaw, GPT-4, or any local model — from any browser, on any device.**
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/demo-voiceclaw.io-8b5cf6)](https://www.voiceclaw.io)
+[![Node.js](https://img.shields.io/badge/node-18%2B-brightgreen)](https://nodejs.org)
+
+**Open-source voice interface for any AI. Talk to Ollama, Claude, OpenClaw, GPT-4, LM Studio — from any browser, on any device.**
+
+> *"Hey Siri, but for your own AI."* — VoiceClaw turns any LLM into a voice assistant you can call from your phone. Bring your own keys, keep your data private, self-host if you want.
 
 VoiceClaw adds a voice layer to whatever AI you're already running. Install the bridge on your machine, then open **voiceclaw.io/app** on any phone or browser and talk to your AI.
 
-🌐 **Live:** [voiceclaw.io](https://www.voiceclaw.io)
+🌐 **Live:** [voiceclaw.io](https://www.voiceclaw.io) · 📦 **Install:** `irm https://www.voiceclaw.io/install.ps1 | iex`
 
 ---
 

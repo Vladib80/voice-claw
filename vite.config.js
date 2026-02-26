@@ -10,13 +10,13 @@ export default defineConfig({
       manifest: {
         name: 'VoiceClaw',
         short_name: 'VoiceClaw',
-        description: 'Talk to your OpenClaw AI agent by voice',
+        description: 'Your voice. Your AI. Any device.',
         theme_color: '#0a0f1e',
         background_color: '#0a0f1e',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
-        start_url: '/',
+        start_url: '/app',
         icons: [
           {
             src: '/icon-192.png',
