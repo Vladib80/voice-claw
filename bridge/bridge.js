@@ -38,6 +38,17 @@ async function init() {
   const gatewayUrl = 'http://127.0.0.1:18789';
   const gatewayToken = '';
 
+  console.log('\n── API Keys (for voice features) ──');
+  console.log('Get your OpenAI key at: https://platform.openai.com/api-keys');
+  console.log('Get your Groq key at: https://console.groq.com/keys\n');
+  const openaiKey = await prompt('OpenAI API Key (for text-to-speech): ');
+  const groqKey = await prompt('Groq API Key (for speech-to-text): ');
+
+  if (!openaiKey || !groqKey) {
+    console.warn('\n⚠️  Missing API keys — voice features will not work through bridge.');
+    console.warn('   You can re-run "node bridge.js init" to add them later.\n');
+  }
+
   const res = await fetch(`${apiBase}/api/bridge/pair/complete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -66,6 +77,8 @@ async function init() {
     scope: data.scope,
     gatewayUrl: gatewayUrl.replace(/\/$/, ''),
     gatewayToken,
+    openaiKey: openaiKey || '',
+    groqKey: groqKey || '',
     pairedAt: Date.now(),
   });
 
@@ -100,6 +113,66 @@ async function forwardChatCompletions(cfg, body) {
   return { ok: true, payload: json };
 }
 
+async function bridgeTranscribe(cfg, body) {
+  if (!cfg.groqKey) return { ok: false, error: 'No Groq API key configured in bridge. Re-run: node bridge.js init' };
+  const { audioBase64, mimeType, filename } = body;
+  if (!audioBase64) return { ok: false, error: 'No audio data' };
+
+  const audioBuffer = Buffer.from(audioBase64, 'base64');
+  const boundary = '----FormBoundary' + Math.random().toString(36).slice(2);
+  const ext = (filename || 'audio.mp4').split('.').pop() || 'mp4';
+  const safeFilename = 'audio.' + ext;
+
+  const pre = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${safeFilename}"\r\nContent-Type: ${mimeType || 'audio/mp4'}\r\n\r\n`
+  );
+  const modelPart = Buffer.from(
+    `\r\n--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-large-v3\r\n--${boundary}--\r\n`
+  );
+  const formBody = Buffer.concat([pre, audioBuffer, modelPart]);
+
+  const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${cfg.groqKey}`,
+      'Content-Type': `multipart/form-data; boundary=${boundary}`,
+    },
+    body: formBody,
+  });
+
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); } catch { return { ok: false, error: `Invalid JSON from Groq: ${text.slice(0, 200)}` }; }
+  if (!res.ok) return { ok: false, error: json?.error?.message || `Groq HTTP ${res.status}` };
+  return { ok: true, text: json.text || '' };
+}
+
+async function bridgeTts(cfg, body) {
+  if (!cfg.openaiKey) return { ok: false, error: 'No OpenAI API key configured in bridge. Re-run: node bridge.js init' };
+  const { text, voice } = body;
+  if (!text) return { ok: false, error: 'No text for TTS' };
+
+  const res = await fetch('https://api.openai.com/v1/audio/speech', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${cfg.openaiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ model: 'tts-1', input: text, voice: voice || 'onyx', response_format: 'mp3' }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    let msg = `TTS error ${res.status}`;
+    try { msg = JSON.parse(errText).error?.message || msg; } catch {}
+    return { ok: false, error: msg };
+  }
+
+  const arrayBuf = await res.arrayBuffer();
+  const audioBase64 = Buffer.from(arrayBuf).toString('base64');
+  return { ok: true, audioBase64 };
+}
+
 function run() {
   const cfg = loadConfig();
   if (!cfg) {
@@ -129,13 +202,33 @@ function run() {
       if (!msg?.id || msg.type !== 'invoke') return;
 
       try {
-        if (msg.payload?.kind === 'chatCompletions') {
-          const out = await forwardChatCompletions(cfg, msg.payload.body || {});
+        const kind = msg.payload?.kind;
+        const body = msg.payload?.body || {};
+
+        if (kind === 'chatCompletions') {
+          const out = await forwardChatCompletions(cfg, body);
           if (out.ok) {
             ws.send(JSON.stringify({ id: msg.id, type: 'result', ok: true, payload: out.payload }));
           } else {
             ws.send(JSON.stringify({ id: msg.id, type: 'result', ok: false, error: out.error }));
           }
+
+        } else if (kind === 'transcribe') {
+          const out = await bridgeTranscribe(cfg, body);
+          if (out.ok) {
+            ws.send(JSON.stringify({ id: msg.id, type: 'result', ok: true, payload: { text: out.text } }));
+          } else {
+            ws.send(JSON.stringify({ id: msg.id, type: 'result', ok: false, error: out.error }));
+          }
+
+        } else if (kind === 'tts') {
+          const out = await bridgeTts(cfg, body);
+          if (out.ok) {
+            ws.send(JSON.stringify({ id: msg.id, type: 'result', ok: true, payload: { audioBase64: out.audioBase64 } }));
+          } else {
+            ws.send(JSON.stringify({ id: msg.id, type: 'result', ok: false, error: out.error }));
+          }
+
         } else {
           ws.send(JSON.stringify({ id: msg.id, type: 'result', ok: false, error: 'Unsupported invoke kind' }));
         }

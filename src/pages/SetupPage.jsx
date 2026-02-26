@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, ArrowRight, AlertCircle, Loader, WifiOff, ChevronDown, ChevronUp, Terminal, Link2, Copy, RefreshCw, Check } from 'lucide-react';
-import { setGateway, setBridge } from '../lib/gateway';
+import { setGateway, setBridge, setApiKeys } from '../lib/gateway';
 import './SetupPage.css';
 
 const STEPS = ['Connect', 'Test', 'Ready'];
@@ -37,6 +37,8 @@ export default function SetupPage() {
 
   const [setupMode, setSetupMode] = useState('bridge'); // bridge | gateway
   const [pairing, setPairing] = useState({ loading: false, pairId: '', pairCode: '', status: '', connected: false, expiresAt: null, bridgeId: '' });
+  const [openaiKey, setOpenaiKey] = useState('');
+  const [groqKey, setGroqKey] = useState('');
   const [copiedKey, setCopiedKey] = useState('');
   const [timeLeft, setTimeLeft] = useState(null);
   const pollRef = useRef(null);
@@ -99,6 +101,7 @@ export default function SetupPage() {
       if (res.ok && data.ok) {
         setTestResult('ok');
         setGateway(url, token);
+        if (openaiKey || groqKey) setApiKeys(openaiKey, groqKey);
         setTimeout(() => setStep(2), 800);
       } else {
         setTestResult('error');
@@ -153,7 +156,7 @@ export default function SetupPage() {
     } catch {}
   };
 
-  const canProceed = url.trim().length > 0 && token.trim().length > 0;
+  const canProceed = url.trim().length > 0 && token.trim().length > 0 && openaiKey.trim().length > 0 && groqKey.trim().length > 0;
 
   return (
     <div className="setup">
@@ -343,6 +346,36 @@ export default function SetupPage() {
                 spellCheck={false}
               />
               <span className="form-hint">The token from <span className="mono">gateway.auth.token</span> in your openclaw.json</span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="openai-key">OpenAI API Key (for voice)</label>
+              <input
+                id="openai-key"
+                className="form-input form-input--mono"
+                type="password"
+                placeholder="sk-proj-..."
+                value={openaiKey}
+                onChange={e => setOpenaiKey(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <span className="form-hint">Used for text-to-speech. Get one at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">platform.openai.com</a></span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="groq-key">Groq API Key (for speech-to-text)</label>
+              <input
+                id="groq-key"
+                className="form-input form-input--mono"
+                type="password"
+                placeholder="gsk_..."
+                value={groqKey}
+                onChange={e => setGroqKey(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <span className="form-hint">Used for transcription. Get one at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com</a></span>
             </div>
 
             <div className="tailscale-tip">

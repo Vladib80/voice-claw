@@ -38,6 +38,26 @@ export function clearBridge() {
   localStorage.removeItem(BRIDGE_KEY);
 }
 
+const API_KEYS_KEY = 'voiceclaw_api_keys';
+
+export function setApiKeys(openaiKey, groqKey) {
+  localStorage.setItem(API_KEYS_KEY, JSON.stringify({ openaiKey, groqKey }));
+}
+
+export function getApiKeys() {
+  try {
+    const raw = localStorage.getItem(API_KEYS_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+export function clearApiKeys() {
+  localStorage.removeItem(API_KEYS_KEY);
+}
+
 export function isConnected() {
   const gw = getGateway();
   const br = getBridge();

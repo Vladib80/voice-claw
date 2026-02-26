@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { getGateway, getBridge } from '../lib/gateway';
+import { getGateway, getBridge, getApiKeys } from '../lib/gateway';
 
 const STATES = {
   IDLE: 'idle',
@@ -135,6 +135,11 @@ export function useVoiceSession(voice = 'onyx') {
       const ext = blob.type.includes('mp4') || blob.type.includes('m4a') ? 'mp4' : 'webm';
       formData.append('audio', blob, `audio.${ext}`);
 
+      const { groqKey: _groqKey } = getApiKeys();
+      const _br = getBridge();
+      if (_groqKey) formData.append('groqKey', _groqKey);
+      if (_br?.bridgeId) formData.append('bridgeId', _br.bridgeId);
+
       const transcribeRes = await fetch('/api/transcribe', {
         method: 'POST',
         body: formData,
@@ -162,6 +167,7 @@ export function useVoiceSession(voice = 'onyx') {
 
       const gw = getGateway();
       const br = getBridge();
+      const { openaiKey: _openaiKey, groqKey: _groqKey2 } = getApiKeys();
       const respondRes = await fetch('/api/respond', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -172,6 +178,8 @@ export function useVoiceSession(voice = 'onyx') {
           gatewayUrl: gw?.url || null,
           gatewayToken: gw?.token || null,
           bridgeId: br?.bridgeId || null,
+          openaiKey: _openaiKey || null,
+          groqKey: _groqKey2 || null,
         }),
       });
 

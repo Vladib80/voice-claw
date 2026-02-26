@@ -320,11 +320,68 @@ app.post('/api/gateway-test', gatewayTestLimiter, async (req, res) => {
 // ── POST /api/transcribe ──────────────────────────────────────────────────────
 const Busboy = require('busboy');
 
+// ── Whisper hallucination filter ───────────────────────────────────────────────
+const HALLUCINATIONS = [
+  'thank you', 'thanks', 'you', 'thank you.', 'thanks.',
+  'bye', 'bye.', 'goodbye', 'see you', 'okay', 'ok',
+  'thank you very much', 'thanks a lot', 'sure', '.',
+  'thank you for watching', 'thanks for watching',
+  'please subscribe', 'like and subscribe',
+  'the end', 'silence', 'so', 'um', 'uh',
+];
+const CJK_REGEX = /[\u3000-\u9fff\uac00-\ud7af\uf900-\ufaff]/g;
+
+function filterHallucination(text) {
+  const trimmed = (text || '').trim().toLowerCase();
+  const cjkMatches = (trimmed.match(CJK_REGEX) || []).length;
+  const cjkRatio   = trimmed.length > 0 ? cjkMatches / trimmed.length : 0;
+  if (trimmed.length < 3 || HALLUCINATIONS.includes(trimmed) || cjkRatio > 0.3) {
+    return { text: '', skipped: true };
+  }
+  return null;
+}
+
+function callGroqTranscribe(groqKey, audioBuffer, mimetype, filename) {
+  const boundary    = '----FormBoundary' + Math.random().toString(36).slice(2);
+  const ext         = filename.split('.').pop() || 'mp4';
+  const safeFilename = 'audio.' + ext;
+
+  const pre = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${safeFilename}"\r\nContent-Type: ${mimetype}\r\n\r\n`
+  );
+  const modelPart = Buffer.from(
+    `\r\n--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-large-v3\r\n--${boundary}--\r\n`
+  );
+  const body = Buffer.concat([pre, audioBuffer, modelPart]);
+
+  return new Promise((resolve, reject) => {
+    const opts = {
+      hostname: 'api.groq.com',
+      path: '/openai/v1/audio/transcriptions',
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${groqKey}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': body.length,
+      },
+    };
+    const req2 = https.request(opts, (r) => {
+      const cs = [];
+      r.on('data', c => cs.push(c));
+      r.on('end', () => resolve({ status: r.statusCode, raw: Buffer.concat(cs) }));
+    });
+    req2.on('error', reject);
+    req2.write(body);
+    req2.end();
+  });
+}
+
 app.post('/api/transcribe', transcribeLimiter, (req, res) => {
   const bb = Busboy({ headers: req.headers, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB max
   const chunks = [];
   let filename = 'audio.mp4';
   let mimetype = 'audio/mp4';
+  const fields = {};
 
   bb.on('file', (name, file, info) => {
     filename = info.filename || filename;
@@ -332,66 +389,48 @@ app.post('/api/transcribe', transcribeLimiter, (req, res) => {
     file.on('data', d => chunks.push(d));
   });
 
+  bb.on('field', (name, val) => { fields[name] = val; });
+
   bb.on('finish', async () => {
     try {
       const audioBuffer = Buffer.concat(chunks);
-      const boundary    = '----FormBoundary' + Math.random().toString(36).slice(2);
-      const ext         = filename.split('.').pop() || 'mp4';
-      const safeFilename = 'audio.' + ext;
+      const bridgeId = fields.bridgeId || null;
+      const userGroqKey = fields.groqKey || null;
 
-      const pre = Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${safeFilename}"\r\nContent-Type: ${mimetype}\r\n\r\n`
-      );
-      const modelPart = Buffer.from(
-        `\r\n--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-large-v3\r\n--${boundary}--\r\n`
-      );
-      const body = Buffer.concat([pre, audioBuffer, modelPart]);
+      let transcriptText;
 
-      const result = await new Promise((resolve, reject) => {
-        const opts = {
-          hostname: 'api.groq.com',
-          path: '/openai/v1/audio/transcriptions',
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-            'Content-Type': `multipart/form-data; boundary=${boundary}`,
-            'Content-Length': body.length,
-          },
-        };
-        const req2 = https.request(opts, (r) => {
-          const cs = [];
-          r.on('data', c => cs.push(c));
-          r.on('end', () => resolve({ status: r.statusCode, raw: Buffer.concat(cs) }));
+      // Route 1: Bridge mode — send audio base64 to bridge for transcription
+      if (bridgeId && bridgeSockets.has(bridgeId)) {
+        const audioBase64 = audioBuffer.toString('base64');
+        const br = await invokeBridge(bridgeId, 'transcribe', {
+          audioBase64, mimeType: mimetype, filename,
         });
-        req2.on('error', reject);
-        req2.write(body);
-        req2.end();
-      });
+        if (br.error) throw new Error('Bridge: ' + br.error);
+        transcriptText = br.text || '';
 
-      const json = JSON.parse(result.raw.toString());
-      if (json.error) return res.status(500).json({ error: json.error.message });
+      // Route 2: User-provided Groq key
+      } else if (userGroqKey) {
+        const result = await callGroqTranscribe(userGroqKey, audioBuffer, mimetype, filename);
+        const json = JSON.parse(result.raw.toString());
+        if (json.error) return res.status(500).json({ error: json.error.message });
+        transcriptText = json.text || '';
 
-      // Filter Whisper hallucinations (silence → "Thank you" / Japanese / etc.)
-      const HALLUCINATIONS = [
-        'thank you', 'thanks', 'you', 'thank you.', 'thanks.',
-        'bye', 'bye.', 'goodbye', 'see you', 'okay', 'ok',
-        'thank you very much', 'thanks a lot', 'sure', '.',
-        'thank you for watching', 'thanks for watching',
-        'please subscribe', 'like and subscribe',
-        'the end', 'silence', 'so', 'um', 'uh',
-      ];
-      const trimmed = (json.text || '').trim().toLowerCase();
+      // Route 3: Fallback to server env key (deprecated — should not happen in BYOK)
+      } else if (process.env.GROQ_API_KEY) {
+        console.warn('⚠️  FALLBACK: Using server GROQ_API_KEY — user should provide their own key');
+        const result = await callGroqTranscribe(process.env.GROQ_API_KEY, audioBuffer, mimetype, filename);
+        const json = JSON.parse(result.raw.toString());
+        if (json.error) return res.status(500).json({ error: json.error.message });
+        transcriptText = json.text || '';
 
-      // CJK hallucinations — Whisper invents Japanese/Chinese/Korean on silence
-      const CJK_REGEX = /[\u3000-\u9fff\uac00-\ud7af\uf900-\ufaff]/g;
-      const cjkMatches = (trimmed.match(CJK_REGEX) || []).length;
-      const cjkRatio   = trimmed.length > 0 ? cjkMatches / trimmed.length : 0;
-
-      if (trimmed.length < 3 || HALLUCINATIONS.includes(trimmed) || cjkRatio > 0.3) {
-        return res.json({ text: '', skipped: true });
+      } else {
+        return res.status(400).json({ error: 'No Groq API key provided. Add your key in Settings.' });
       }
 
-      res.json({ text: json.text });
+      const hallucination = filterHallucination(transcriptText);
+      if (hallucination) return res.json(hallucination);
+
+      res.json({ text: transcriptText });
     } catch (err) {
       console.error('Transcribe error:', err.message);
       res.status(500).json({ error: err.message });
@@ -401,6 +440,37 @@ app.post('/api/transcribe', transcribeLimiter, (req, res) => {
   req.pipe(bb);
 });
 
+// ── OpenAI TTS helper ─────────────────────────────────────────────────────────
+function callOpenaiTts(apiKey, input, voice) {
+  const ttsBodyStr = JSON.stringify({ model: 'tts-1', input, voice, response_format: 'mp3' });
+  return new Promise((resolve, reject) => {
+    const opts = {
+      hostname: 'api.openai.com', path: '/v1/audio/speech', method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(ttsBodyStr),
+      },
+    };
+    const req2 = https.request(opts, (r) => {
+      const cs = [];
+      r.on('data', c => cs.push(c));
+      r.on('end', () => {
+        if (r.statusCode !== 200) {
+          const body = Buffer.concat(cs).toString();
+          let msg = `TTS error ${r.statusCode}`;
+          try { msg = JSON.parse(body).error?.message || msg; } catch {}
+          return reject(new Error(msg));
+        }
+        resolve(Buffer.concat(cs).toString('base64'));
+      });
+    });
+    req2.on('error', reject);
+    req2.write(ttsBodyStr);
+    req2.end();
+  });
+}
+
 // ── POST /api/respond ─────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are a voice assistant powered by the user's own OpenClaw AI agent. Keep responses SHORT and conversational — this is a voice call, not a chat. 2-3 sentences max unless asked to go deeper. No bullet points, no markdown — just natural speech that sounds good out loud.`;
 
@@ -409,7 +479,7 @@ const MAX_HISTORY_MSG  = 2000; // max chars per history message to block inflate
 
 app.post('/api/respond', respondLimiter, async (req, res) => {
   try {
-    const { text, history, voice: rawVoice, gatewayUrl, gatewayToken, bridgeId } = req.body;
+    const { text, history, voice: rawVoice, gatewayUrl, gatewayToken, bridgeId, openaiKey: userOpenaiKey, groqKey: userGroqKey } = req.body;
     const VALID_VOICES = ['alloy', 'echo', 'fable', 'nova', 'onyx', 'shimmer'];
     const voice = VALID_VOICES.includes(rawVoice) ? rawVoice : 'onyx';
 
@@ -463,34 +533,27 @@ app.post('/api/respond', respondLimiter, async (req, res) => {
     // Cap TTS input — prevents abuse and controls API costs
     const ttsInput = String(responseText).slice(0, MAX_TTS_CHARS);
 
-    // TTS via OpenAI — API key is server-side only, never exposed to browser
-    const ttsBodyStr = JSON.stringify({ model: 'tts-1', input: ttsInput, voice, response_format: 'mp3' });
-    const audioBase64 = await new Promise((resolve, reject) => {
-      const opts = {
-        hostname: 'api.openai.com', path: '/v1/audio/speech', method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(ttsBodyStr),
-        },
-      };
-      const req2 = https.request(opts, (r) => {
-        const cs = [];
-        r.on('data', c => cs.push(c));
-        r.on('end', () => {
-          if (r.statusCode !== 200) {
-            const body = Buffer.concat(cs).toString();
-            let msg = `TTS error ${r.statusCode}`;
-            try { msg = JSON.parse(body).error?.message || msg; } catch {}
-            return reject(new Error(msg));
-          }
-          resolve(Buffer.concat(cs).toString('base64'));
-        });
-      });
-      req2.on('error', reject);
-      req2.write(ttsBodyStr);
-      req2.end();
-    });
+    let audioBase64;
+
+    // TTS Route 1: Bridge mode
+    if (hasBridge && bridgeSockets.has(bridgeId)) {
+      const br = await invokeBridge(bridgeId, 'tts', { text: ttsInput, voice });
+      if (br.error) throw new Error('Bridge TTS: ' + br.error);
+      audioBase64 = br.audioBase64;
+      if (!audioBase64) throw new Error('Bridge TTS returned no audio');
+
+    // TTS Route 2: User-provided OpenAI key
+    } else if (userOpenaiKey) {
+      audioBase64 = await callOpenaiTts(userOpenaiKey, ttsInput, voice);
+
+    // TTS Route 3: Fallback to server env key (deprecated)
+    } else if (process.env.OPENAI_API_KEY) {
+      console.warn('⚠️  FALLBACK: Using server OPENAI_API_KEY — user should provide their own key');
+      audioBase64 = await callOpenaiTts(process.env.OPENAI_API_KEY, ttsInput, voice);
+
+    } else {
+      throw new Error('No OpenAI API key provided. Add your key in Settings.');
+    }
 
     res.json({ text: responseText, audio: audioBase64 });
   } catch (err) {
