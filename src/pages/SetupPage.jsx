@@ -25,6 +25,16 @@ const DEFAULT_GATEWAY_URL = 'http://localhost:18789';
 const INSTALL_CMD_MAC = 'curl -fsSL https://www.voiceclaw.io/install.sh | bash';
 const INSTALL_CMD_WIN = 'irm https://www.voiceclaw.io/install.ps1 | iex';
 
+const GATEWAY_PRESETS = [
+  { id: 'openclaw',   label: 'OpenClaw',   url: 'http://localhost:18789',    tokenRequired: true,  tokenLabel: 'Auth Token',            tokenPlaceholder: 'oc_••••••••',   tokenHint: 'The token from gateway.auth.token in your openclaw.json', hint: 'Your OpenClaw AI agent gateway' },
+  { id: 'ollama',     label: 'Ollama',     url: 'http://localhost:11434',    tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Run: ollama serve — no token needed' },
+  { id: 'lmstudio',  label: 'LM Studio',  url: 'http://localhost:1234',     tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Start LM Studio → Local Server tab — no token needed' },
+  { id: 'openrouter', label: 'OpenRouter', url: 'https://openrouter.ai/api', tokenRequired: true, tokenLabel: 'OpenRouter API Key',    tokenPlaceholder: 'sk-or-v1-...',  tokenHint: 'Get one at openrouter.ai/keys — routes to 100+ models', hint: 'Access 100+ models (Claude, GPT-4, Llama) with one key' },
+  { id: 'openai',    label: 'OpenAI',     url: 'https://api.openai.com',    tokenRequired: true,  tokenLabel: 'OpenAI API Key',        tokenPlaceholder: 'sk-proj-...',   tokenHint: 'Get one at platform.openai.com/api-keys', hint: 'GPT-4o, o1, and other OpenAI models' },
+  { id: 'anthropic', label: 'Claude',     url: null,                        tokenRequired: true,  tokenLabel: 'Anthropic API Key',     tokenPlaceholder: 'sk-ant-...',    tokenHint: 'Get one at console.anthropic.com', hint: null, bridgeOnly: true },
+  { id: 'custom',    label: 'Custom',     url: '',                          tokenRequired: false, tokenLabel: 'Auth Token (optional)', tokenPlaceholder: 'optional',      tokenHint: 'Any OpenAI-compatible API endpoint', hint: 'Enter any OpenAI-compatible gateway URL' },
+];
+
 export default function SetupPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
@@ -40,6 +50,7 @@ export default function SetupPage() {
   const [openaiKey, setOpenaiKey] = useState('');
   const [groqKey, setGroqKey] = useState('');
   const [copiedKey, setCopiedKey] = useState('');
+  const [gatewayPreset, setGatewayPreset] = useState('openclaw');
   const [timeLeft, setTimeLeft] = useState(null);
   const pollRef = useRef(null);
   const countdownRef = useRef(null);
@@ -148,6 +159,13 @@ export default function SetupPage() {
     } catch {}
   };
 
+  const handlePresetSelect = (presetId) => {
+    setGatewayPreset(presetId);
+    const preset = GATEWAY_PRESETS.find(p => p.id === presetId);
+    if (preset?.url !== null && preset?.url !== undefined) setUrl(preset.url);
+    if (!preset?.tokenRequired) setToken('');
+  };
+
   const copy = async (value, key = 'generic') => {
     try {
       await navigator.clipboard.writeText(value);
@@ -156,7 +174,9 @@ export default function SetupPage() {
     } catch {}
   };
 
-  const canProceed = url.trim().length > 0 && token.trim().length > 0 && openaiKey.trim().length > 0 && groqKey.trim().length > 0;
+  const activePreset = GATEWAY_PRESETS.find(p => p.id === gatewayPreset) ?? GATEWAY_PRESETS[0];
+  const tokenOk = !activePreset.tokenRequired || token.trim().length > 0;
+  const canProceed = url.trim().length > 0 && tokenOk && openaiKey.trim().length > 0 && groqKey.trim().length > 0;
 
   return (
     <div className="setup">
@@ -185,10 +205,13 @@ export default function SetupPage() {
         {/* Step 0 — Enter credentials */}
         {step === 0 && (
           <div className="setup-step" key="step0">
-            <h2 className="setup-title">Connect OpenClaw</h2>
+            <h2 className="setup-title">
+              {setupMode === 'bridge' ? 'Bridge Setup' : `Connect ${activePreset.label}`}
+            </h2>
             <p className="setup-desc">
-              Recommended: pair local VoiceClaw Bridge (safer, full OpenClaw access).
-              Advanced: direct gateway token mode.
+              {setupMode === 'bridge'
+                ? 'Install the bridge on your PC — it dials out, no port forwarding needed. Works with OpenClaw and any local AI.'
+                : 'Connect any OpenAI-compatible AI. Pick your backend below.'}
             </p>
 
             <div className="mode-switch">
@@ -280,126 +303,167 @@ export default function SetupPage() {
 
             {setupMode === 'gateway' && (
               <>
-            {/* OpenClaw setup guide */}
-            <div className="setup-guide">
-              <button
-                className="setup-guide-toggle"
-                onClick={() => setShowSetupGuide(!showSetupGuide)}
-              >
-                <Terminal size={13} />
-                <span>First time? Enable the API endpoint in OpenClaw</span>
-                {showSetupGuide ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-              </button>
-              {showSetupGuide && (
-                <div className="setup-guide-body">
-                  <p className="setup-guide-step">1. Add this to <span className="mono">~/.openclaw/openclaw.json</span>:</p>
-                  <div className="copy-row">
-                    <pre className="setup-code">{OPENCLAW_CONFIG_SNIPPET}</pre>
-                    <button className="icon-btn" onClick={() => copy(OPENCLAW_CONFIG_SNIPPET, 'config-snippet')}>
-                      {copiedKey === 'config-snippet' ? <Check size={13} /> : <Copy size={13} />}
-                    </button>
+                {/* Preset picker */}
+                <div className="form-group" style={{ marginBottom: 20 }}>
+                  <label className="form-label">AI Backend</label>
+                  <div className="preset-picker">
+                    {GATEWAY_PRESETS.map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`preset-btn ${gatewayPreset === p.id ? 'preset-btn--active' : ''}`}
+                        onClick={() => handlePresetSelect(p.id)}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
                   </div>
-                  <p className="setup-guide-step">2. Restart your gateway:</p>
-                  <div className="copy-row">
-                    <pre className="setup-code">{RESTART_CMD}</pre>
-                    <button className="icon-btn" onClick={() => copy(RESTART_CMD, 'restart-cmd')}>
-                      {copiedKey === 'restart-cmd' ? <Check size={13} /> : <Copy size={13} />}
-                    </button>
-                  </div>
-                  <p className="setup-guide-step">3. Your gateway URL is:</p>
-                  <div className="copy-row">
-                    <pre className="setup-code">{DEFAULT_GATEWAY_URL}</pre>
-                    <button className="icon-btn" onClick={() => copy(DEFAULT_GATEWAY_URL, 'gateway-url')}>
-                      {copiedKey === 'gateway-url' ? <Check size={13} /> : <Copy size={13} />}
-                    </button>
-                  </div>
-                  <p className="setup-guide-step">4. Your token is whatever you set above as <span className="mono">"token"</span>.</p>
+                  {activePreset.hint && <span className="form-hint" style={{ marginTop: 6 }}>{activePreset.hint}</span>}
                 </div>
-              )}
-            </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="gw-url">Gateway URL</label>
-              <input
-                id="gw-url"
-                className="form-input"
-                type="url"
-                placeholder="http://localhost:18789"
-                value={url}
-                onChange={e => setUrl(e.target.value)}
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <span className="form-hint">Your OpenClaw gateway address (local or remote)</span>
-            </div>
+                {activePreset.bridgeOnly ? (
+                  /* Claude requires Bridge mode */
+                  <div className="preset-bridge-notice">
+                    <AlertCircle size={16} style={{ flexShrink: 0, color: '#a78bfa', marginTop: 2 }} />
+                    <div>
+                      <p className="preset-bridge-notice-title">Claude requires Bridge mode</p>
+                      <p className="preset-bridge-notice-body">
+                        Claude's API isn't OpenAI-compatible. The VoiceClaw Bridge converts the format automatically — just enter your Anthropic API key when the installer prompts for it.
+                      </p>
+                      <button className="setup-btn" style={{ marginTop: 12 }} onClick={() => setSetupMode('bridge')}>
+                        Switch to Bridge mode <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* OpenClaw setup guide — only shown for openclaw preset */}
+                    {gatewayPreset === 'openclaw' && (
+                      <div className="setup-guide">
+                        <button
+                          className="setup-guide-toggle"
+                          onClick={() => setShowSetupGuide(!showSetupGuide)}
+                        >
+                          <Terminal size={13} />
+                          <span>First time? Enable the API endpoint in OpenClaw</span>
+                          {showSetupGuide ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                        </button>
+                        {showSetupGuide && (
+                          <div className="setup-guide-body">
+                            <p className="setup-guide-step">1. Add this to <span className="mono">~/.openclaw/openclaw.json</span>:</p>
+                            <div className="copy-row">
+                              <pre className="setup-code">{OPENCLAW_CONFIG_SNIPPET}</pre>
+                              <button className="icon-btn" onClick={() => copy(OPENCLAW_CONFIG_SNIPPET, 'config-snippet')}>
+                                {copiedKey === 'config-snippet' ? <Check size={13} /> : <Copy size={13} />}
+                              </button>
+                            </div>
+                            <p className="setup-guide-step">2. Restart your gateway:</p>
+                            <div className="copy-row">
+                              <pre className="setup-code">{RESTART_CMD}</pre>
+                              <button className="icon-btn" onClick={() => copy(RESTART_CMD, 'restart-cmd')}>
+                                {copiedKey === 'restart-cmd' ? <Check size={13} /> : <Copy size={13} />}
+                              </button>
+                            </div>
+                            <p className="setup-guide-step">3. Your gateway URL is:</p>
+                            <div className="copy-row">
+                              <pre className="setup-code">{DEFAULT_GATEWAY_URL}</pre>
+                              <button className="icon-btn" onClick={() => copy(DEFAULT_GATEWAY_URL, 'gateway-url')}>
+                                {copiedKey === 'gateway-url' ? <Check size={13} /> : <Copy size={13} />}
+                              </button>
+                            </div>
+                            <p className="setup-guide-step">4. Your token is whatever you set above as <span className="mono">"token"</span>.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="gw-token">Auth Token</label>
-              <input
-                id="gw-token"
-                className="form-input form-input--mono"
-                type="password"
-                placeholder="oc_••••••••••••••••"
-                value={token}
-                onChange={e => setToken(e.target.value)}
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <span className="form-hint">The token from <span className="mono">gateway.auth.token</span> in your openclaw.json</span>
-            </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="gw-url">Gateway URL</label>
+                      <input
+                        id="gw-url"
+                        className="form-input"
+                        type="url"
+                        placeholder={activePreset.url || 'https://...'}
+                        value={url}
+                        onChange={e => setUrl(e.target.value)}
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                    </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="openai-key">OpenAI API Key (for voice)</label>
-              <input
-                id="openai-key"
-                className="form-input form-input--mono"
-                type="password"
-                placeholder="sk-proj-..."
-                value={openaiKey}
-                onChange={e => setOpenaiKey(e.target.value)}
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <span className="form-hint">Used for text-to-speech. Get one at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">platform.openai.com</a></span>
-            </div>
+                    {activePreset.tokenRequired && (
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="gw-token">{activePreset.tokenLabel || 'Auth Token'}</label>
+                        <input
+                          id="gw-token"
+                          className="form-input form-input--mono"
+                          type="password"
+                          placeholder={activePreset.tokenPlaceholder || '••••••••'}
+                          value={token}
+                          onChange={e => setToken(e.target.value)}
+                          autoComplete="off"
+                          spellCheck={false}
+                        />
+                        {activePreset.tokenHint && <span className="form-hint">{activePreset.tokenHint}</span>}
+                      </div>
+                    )}
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="groq-key">Groq API Key (for speech-to-text)</label>
-              <input
-                id="groq-key"
-                className="form-input form-input--mono"
-                type="password"
-                placeholder="gsk_..."
-                value={groqKey}
-                onChange={e => setGroqKey(e.target.value)}
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <span className="form-hint">Used for transcription. Get one at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com</a></span>
-            </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="openai-key">OpenAI API Key (for voice)</label>
+                      <input
+                        id="openai-key"
+                        className="form-input form-input--mono"
+                        type="password"
+                        placeholder="sk-proj-..."
+                        value={openaiKey}
+                        onChange={e => setOpenaiKey(e.target.value)}
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                      <span className="form-hint">Used for text-to-speech. Get one at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">platform.openai.com</a></span>
+                    </div>
 
-            <div className="tailscale-tip">
-              <div className="tailscale-tip-header">
-                <WifiOff size={13} />
-                <span>Want to use VoiceClaw on mobile away from home?</span>
-              </div>
-              <p className="tailscale-tip-body">
-                Install <a href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer">Tailscale</a> on
-                both your PC (running OpenClaw) and your phone. Then use your
-                Tailscale IP instead of localhost — e.g.{' '}
-                <span className="mono">http://100.x.x.x:18789</span>.
-                Free, takes 5 minutes, works anywhere.
-              </p>
-            </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="groq-key">Groq API Key (for speech-to-text)</label>
+                      <input
+                        id="groq-key"
+                        className="form-input form-input--mono"
+                        type="password"
+                        placeholder="gsk_..."
+                        value={groqKey}
+                        onChange={e => setGroqKey(e.target.value)}
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                      <span className="form-hint">Used for transcription. Get one at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com</a></span>
+                    </div>
 
-            <button
-              className="setup-btn"
-              onClick={() => setStep(1)}
-              disabled={!canProceed}
-            >
-              Test Connection <ArrowRight size={15} />
-            </button>
-            </>
+                    {gatewayPreset === 'openclaw' && (
+                      <div className="tailscale-tip">
+                        <div className="tailscale-tip-header">
+                          <WifiOff size={13} />
+                          <span>Want to use VoiceClaw on mobile away from home?</span>
+                        </div>
+                        <p className="tailscale-tip-body">
+                          Install <a href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer">Tailscale</a> on
+                          both your PC (running OpenClaw) and your phone. Then use your
+                          Tailscale IP instead of localhost — e.g.{' '}
+                          <span className="mono">http://100.x.x.x:18789</span>.
+                          Free, takes 5 minutes, works anywhere.
+                        </p>
+                      </div>
+                    )}
+
+                    <button
+                      className="setup-btn"
+                      onClick={() => setStep(1)}
+                      disabled={!canProceed}
+                    >
+                      Test Connection <ArrowRight size={15} />
+                    </button>
+                  </>
+                )}
+              </>
             )}
           </div>
         )}
@@ -409,7 +473,7 @@ export default function SetupPage() {
           <div className="setup-step" key="step1">
             <h2 className="setup-title">Testing connection</h2>
             <p className="setup-desc">
-              Verifying your OpenClaw gateway is reachable and your token is valid.
+              Verifying your {activePreset.label} gateway is reachable and your credentials are valid.
             </p>
 
             <div className="test-box">
@@ -464,8 +528,8 @@ export default function SetupPage() {
             <h2 className="setup-title">You're connected</h2>
             <p className="setup-desc">
               {setupMode === 'bridge'
-                ? 'VoiceClaw Bridge is paired with your OpenClaw machine.'
-                : 'VoiceClaw is linked to your OpenClaw gateway.'}
+                ? 'VoiceClaw Bridge is paired and connected to your machine.'
+                : `VoiceClaw is linked to your ${activePreset.label} gateway.`}
               <br />Tap the orb and start talking.
             </p>
             <button className="setup-btn" onClick={() => navigate('/app')}>

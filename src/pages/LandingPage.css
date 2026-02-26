@@ -529,6 +529,66 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Supported backends section */
+.landing-backends {
+  padding: 0 32px 60px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  text-align: center;
+  animation: fade-up 0.6s ease 0.3s both;
+}
+
+.backends-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.backend-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(192, 200, 216, 0.12);
+  border-radius: 8px;
+  padding: 8px 14px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.backend-chip:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.backend-name {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #c0c8d8;
+}
+
+.backend-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.backend-tag--local {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.backend-tag--cloud {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.12);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .landing-hero {
@@ -546,6 +606,7 @@
   }
 
   .landing-how,
+  .landing-backends,
   .landing-compat,
   .landing-quickstart,
   .landing-warning { padding-left: 20px; padding-right: 20px; }

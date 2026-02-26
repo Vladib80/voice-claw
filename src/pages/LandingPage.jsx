@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Mic, Shield, Zap, ArrowRight, Globe, Smartphone, Monitor, Wifi } from 'lucide-react';
+import { Mic, Shield, Zap, ArrowRight, Globe, Smartphone, Monitor, Cpu } from 'lucide-react';
 import { isConnected } from '../lib/gateway';
 import './LandingPage.css';
 
@@ -7,23 +7,32 @@ const FEATURES = [
   {
     icon: <Mic size={20} />,
     title: 'Speak naturally',
-    desc: 'Auto-detects silence, interrupt anytime. Continuous conversation - no buttons, no waiting.',
+    desc: 'Auto-detects silence, interrupt anytime. Continuous conversation — no buttons, no waiting.',
   },
   {
-    icon: <Shield size={20} />,
-    title: 'Your keys, your data',
-    desc: 'Routes through YOUR OpenClaw gateway. Nothing stored on our servers. Zero lock-in.',
+    icon: <Cpu size={20} />,
+    title: 'Any AI backend',
+    desc: 'Works with Ollama, LM Studio, Claude, OpenRouter, OpenAI, or any OpenAI-compatible endpoint. BYOK — credentials never leave your machine.',
   },
   {
     icon: <Zap size={20} />,
     title: 'Sub-second response',
-    desc: 'Groq Whisper STT + streaming TTS. Feels instant, even on mobile.',
+    desc: 'Groq Whisper STT + OpenAI TTS. Feels instant, even on mobile over cellular.',
   },
 ];
 
+const BACKENDS = [
+  { name: 'OpenClaw', tag: 'local' },
+  { name: 'Ollama', tag: 'local' },
+  { name: 'LM Studio', tag: 'local' },
+  { name: 'Claude', tag: 'cloud' },
+  { name: 'OpenRouter', tag: 'cloud' },
+  { name: 'OpenAI', tag: 'cloud' },
+];
+
 const HOW_IT_WORKS = [
-  { step: '01', title: 'Run one command', desc: 'Go to Setup - a pair code auto-generates. Copy the install command and run it in PowerShell or Terminal.' },
-  { step: '02', title: 'Enter the code', desc: 'Paste the pair code when the installer asks. That\'s it - bridge connects automatically.' },
+  { step: '01', title: 'Run one command', desc: 'Go to Setup — a pair code auto-generates. Copy the install command and run it in PowerShell or Terminal.' },
+  { step: '02', title: 'Enter the code', desc: 'Paste the pair code when the installer asks. The bridge connects automatically — no port forwarding, no VPN.' },
   { step: '03', title: 'Tap and talk', desc: 'Page advances on its own. Tap the orb and speak. Your AI responds in voice, instantly.' },
 ];
 
@@ -65,13 +74,13 @@ export default function LandingPage() {
         </div>
 
         <div className="landing-hero-text">
-          <p className="landing-eyebrow">For OpenClaw users</p>
+          <p className="landing-eyebrow">Works with any AI</p>
           <h1 className="landing-headline">
             Your voice.<br />Your AI.<br />Your gateway.
           </h1>
           <p className="landing-subhead">
-            VoiceClaw is a voice interface for your OpenClaw agent.
-            Talk to your AI on any device, in any browser - no app install needed.
+            VoiceClaw is a universal voice interface for your AI — Ollama, Claude, OpenClaw, GPT-4, or any local model.
+            Talk to your AI from any device, any browser, no app install.
           </p>
           <button
             className="landing-cta"
@@ -92,6 +101,20 @@ export default function LandingPage() {
             <p className="feature-desc">{f.desc}</p>
           </div>
         ))}
+      </section>
+
+      {/* Supported backends */}
+      <section className="landing-backends">
+        <p className="landing-section-label">Supported AI backends</p>
+        <div className="backends-row">
+          {BACKENDS.map(b => (
+            <div key={b.name} className="backend-chip">
+              <span className="backend-name">{b.name}</span>
+              <span className={`backend-tag backend-tag--${b.tag}`}>{b.tag}</span>
+            </div>
+          ))}
+        </div>
+        <p className="compat-note">Any OpenAI-compatible endpoint works — local or cloud, with your own keys</p>
       </section>
 
       {/* How it works */}
@@ -146,26 +169,25 @@ export default function LandingPage() {
             <h3 className="quickstart-title">⚙️ Direct gateway (advanced)</h3>
             <ol className="quickstart-list">
               <li>Switch to <span className="mono">Direct Gateway</span> mode in setup</li>
-              <li>Enter your OpenClaw gateway URL and auth token</li>
-              <li>Test connection → done</li>
+              <li>Pick your backend: Ollama, LM Studio, OpenRouter, OpenAI, or custom</li>
+              <li>Enter the URL + API key (auto-filled for known backends) → done</li>
             </ol>
-            <p className="quickstart-note">Only if you know what you're doing. No bridge required.</p>
+            <p className="quickstart-note">No bridge required. Ollama + LM Studio need no API key at all.</p>
           </div>
         </div>
       </section>
 
-      {/* Gateway access warning */}
+      {/* Gateway access info */}
       <section className="landing-warning">
         <div className="warning-card">
-          <div className="warning-icon"><Wifi size={18} /></div>
+          <div className="warning-icon"><Shield size={18} /></div>
           <div>
-            <p className="warning-title">Gateway must be publicly accessible</p>
+            <p className="warning-title">Bridge mode — no port forwarding needed</p>
             <p className="warning-desc">
-              VoiceClaw works anywhere - but your OpenClaw gateway must be reachable from the internet, not just your local network.
-              If you run it on <span className="mono">localhost</span>, it only works on the same WiFi.
-              For mobile use anywhere, run your gateway on a VPS, or expose it with{' '}
-              <a href="https://tailscale.com" target="_blank" rel="noopener noreferrer">Tailscale</a>
-              {' '}or <a href="https://ngrok.com" target="_blank" rel="noopener noreferrer">ngrok</a>.
+              The VoiceClaw Bridge dials <em>out</em> to voiceclaw.io — your local AI is never directly exposed to the internet.
+              Works from any phone, anywhere. Direct gateway mode requires your endpoint to be publicly reachable
+              (VPS, <a href="https://tailscale.com" target="_blank" rel="noopener noreferrer">Tailscale</a>, or{' '}
+              <a href="https://ngrok.com" target="_blank" rel="noopener noreferrer">ngrok</a>).
             </p>
           </div>
         </div>
@@ -173,12 +195,12 @@ export default function LandingPage() {
 
       {/* Bottom CTA */}
       <section className="landing-bottom">
-        <p className="landing-bottom-label">Requires OpenClaw gateway</p>
+        <p className="landing-bottom-label">Works with any AI — local or cloud, your keys</p>
         <button
           className="landing-cta landing-cta--ghost"
           onClick={() => navigate(connected ? '/app' : '/setup')}
         >
-          {connected ? 'Open App' : 'Set Up in 30 Seconds'}
+          {connected ? 'Open App' : 'Set Up in 2 Minutes'}
           <ArrowRight size={16} />
         </button>
       </section>
@@ -186,8 +208,8 @@ export default function LandingPage() {
       <footer className="landing-footer">
         <span className="mono">voiceclaw.io</span>
         <span>·</span>
-        <a href="https://openclaw.ai" target="_blank" rel="noopener noreferrer">
-          Powered by OpenClaw
+        <a href="https://github.com/Vladib80/voice-claw" target="_blank" rel="noopener noreferrer">
+          Open Source on GitHub
         </a>
       </footer>
     </div>

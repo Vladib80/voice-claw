@@ -31,23 +31,65 @@ async function init() {
   const apiBase = process.env.VOICECLAW_API_BASE || 'https://www.voiceclaw.io';
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const prompt = makePrompt(rl);
+
   const pairCode = (await prompt('Enter VoiceClaw pair code (VC-XXXX-XXXX): ')).toUpperCase();
   const deviceName = await prompt('Device name (optional): ') || os.hostname();
-  rl.close();
-  process.stdin.destroy();
-  const gatewayUrl = 'http://127.0.0.1:18789';
-  const gatewayToken = '';
 
-  console.log('\n── API Keys (for voice features) ──');
-  console.log('Get your OpenAI key at: https://platform.openai.com/api-keys');
-  console.log('Get your Groq key at: https://console.groq.com/keys\n');
+  // Backend selection
+  console.log('\n── AI Backend ──');
+  console.log('1) OpenClaw   (local, http://localhost:18789)  [default]');
+  console.log('2) Ollama     (local, http://localhost:11434)');
+  console.log('3) LM Studio  (local, http://localhost:1234)');
+  console.log('4) OpenRouter (cloud, 100+ models)');
+  console.log('5) OpenAI     (cloud, GPT-4o, o1)');
+  console.log('6) Claude     (cloud, Anthropic API)');
+  console.log('7) Custom URL');
+  const backendNum = (await prompt('Choose backend [1-7, default=1]: ')) || '1';
+
+  const BACKEND_MAP = {
+    '1': { type: 'openclaw',   url: 'http://localhost:18789',    needsToken: false, isAnthropic: false },
+    '2': { type: 'ollama',     url: 'http://localhost:11434',    needsToken: false, isAnthropic: false },
+    '3': { type: 'lmstudio',   url: 'http://localhost:1234',     needsToken: false, isAnthropic: false },
+    '4': { type: 'openrouter', url: 'https://openrouter.ai/api', needsToken: true,  isAnthropic: false, tokenPrompt: 'OpenRouter API Key (sk-or-v1-...): ' },
+    '5': { type: 'openai',     url: 'https://api.openai.com',    needsToken: true,  isAnthropic: false, tokenPrompt: 'OpenAI API Key (sk-proj-...): ' },
+    '6': { type: 'anthropic',  url: 'https://api.anthropic.com', needsToken: true,  isAnthropic: true,  tokenPrompt: 'Anthropic API Key (sk-ant-...): ' },
+    '7': { type: 'custom',     url: null,                         needsToken: false, isAnthropic: false },
+  };
+
+  const backend = BACKEND_MAP[backendNum] || BACKEND_MAP['1'];
+  let gatewayUrl = backend.url || '';
+  let gatewayToken = '';
+  let anthropicKey = '';
+
+  if (backend.url === null) {
+    gatewayUrl = await prompt('Gateway URL (e.g. http://localhost:8080/v1): ');
+    const customToken = await prompt('Auth token (leave blank if none): ');
+    if (customToken) gatewayToken = customToken;
+  } else if (backend.needsToken) {
+    const key = await prompt(backend.tokenPrompt);
+    if (backend.isAnthropic) {
+      anthropicKey = key;
+    } else {
+      gatewayToken = key;
+    }
+  }
+
+  // Voice API keys (separate from the AI backend — used for STT + TTS)
+  console.log('\n── Voice API Keys ──');
+  console.log('These power speech recognition and text-to-speech, separate from your AI backend.');
+  console.log('Get OpenAI key: https://platform.openai.com/api-keys');
+  console.log('Get Groq key:   https://console.groq.com/keys\n');
   const openaiKey = await prompt('OpenAI API Key (for text-to-speech): ');
   const groqKey = await prompt('Groq API Key (for speech-to-text): ');
 
   if (!openaiKey || !groqKey) {
-    console.warn('\n⚠️  Missing API keys — voice features will not work through bridge.');
+    console.warn('\n⚠️  Missing voice API keys — voice features will not work through bridge.');
     console.warn('   You can re-run "node bridge.js init" to add them later.\n');
   }
+
+  // Close readline AFTER all prompts are done
+  rl.close();
+  process.stdin.destroy();
 
   const res = await fetch(`${apiBase}/api/bridge/pair/complete`, {
     method: 'POST',
@@ -70,19 +112,23 @@ async function init() {
     process.exit(1);
   }
 
-  saveConfig({
+  const config = {
     apiBase,
     bridgeId: data.bridgeId,
     wsToken: data.wsToken,
     scope: data.scope,
     gatewayUrl: gatewayUrl.replace(/\/$/, ''),
     gatewayToken,
+    gatewayType: backend.type,
     openaiKey: openaiKey || '',
     groqKey: groqKey || '',
     pairedAt: Date.now(),
-  });
+  };
+  if (anthropicKey) config.anthropicKey = anthropicKey;
+  saveConfig(config);
 
-  console.log(`✅ Paired: ${data.bridgeId}`);
+  console.log(`\n✅ Paired: ${data.bridgeId}`);
+  console.log(`Backend: ${backend.type}`);
   console.log(`Config saved: ${CONFIG_PATH}`);
 }
 
@@ -173,6 +219,66 @@ async function bridgeTts(cfg, body) {
   return { ok: true, audioBase64 };
 }
 
+async function forwardAnthropicMessages(cfg, body) {
+  if (!cfg.anthropicKey) return { ok: false, error: 'No Anthropic API key configured. Re-run: node bridge.js init' };
+
+  // Split system message from chat messages (Anthropic uses a top-level system field)
+  const messages = body.messages || [];
+  const systemMsg = messages.find(m => m.role === 'system');
+  const chatMessages = messages.filter(m => m.role !== 'system');
+
+  const anthropicBody = {
+    model: body.model || 'claude-3-5-sonnet-20241022',
+    max_tokens: body.max_tokens || 1024,
+    messages: chatMessages,
+  };
+  if (systemMsg) {
+    anthropicBody.system = typeof systemMsg.content === 'string'
+      ? systemMsg.content
+      : systemMsg.content.map(c => c.text || '').join('');
+  }
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': cfg.anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(anthropicBody),
+  });
+
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); } catch { json = { error: { message: `Invalid JSON from Anthropic: ${text.slice(0, 200)}` } }; }
+
+  if (!res.ok) {
+    return { ok: false, error: json?.error?.message || json?.error?.type || `Anthropic HTTP ${res.status}` };
+  }
+
+  // Convert Anthropic response → OpenAI chat.completion format
+  const content = json.content?.[0]?.text || '';
+  return {
+    ok: true,
+    payload: {
+      id: json.id || 'chatcmpl-bridge',
+      object: 'chat.completion',
+      created: Math.floor(Date.now() / 1000),
+      model: json.model || anthropicBody.model,
+      choices: [{
+        index: 0,
+        message: { role: 'assistant', content },
+        finish_reason: json.stop_reason === 'end_turn' ? 'stop' : (json.stop_reason || 'stop'),
+      }],
+      usage: {
+        prompt_tokens: json.usage?.input_tokens || 0,
+        completion_tokens: json.usage?.output_tokens || 0,
+        total_tokens: (json.usage?.input_tokens || 0) + (json.usage?.output_tokens || 0),
+      },
+    },
+  };
+}
+
 function run() {
   const cfg = loadConfig();
   if (!cfg) {
@@ -206,7 +312,9 @@ function run() {
         const body = msg.payload?.body || {};
 
         if (kind === 'chatCompletions') {
-          const out = await forwardChatCompletions(cfg, body);
+          const out = cfg.gatewayType === 'anthropic'
+            ? await forwardAnthropicMessages(cfg, body)
+            : await forwardChatCompletions(cfg, body);
           if (out.ok) {
             ws.send(JSON.stringify({ id: msg.id, type: 'result', ok: true, payload: out.payload }));
           } else {
