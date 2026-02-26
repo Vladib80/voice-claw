@@ -402,15 +402,8 @@ app.post('/api/respond', async (req, res) => {
       responseText = gwJson.choices[0].message.content;
 
     } else {
-      // Demo mode — no gateway configured, use OpenAI so the app isn't a dead end
-      const chatResult = await httpsPost(
-        'api.openai.com', '/v1/chat/completions',
-        { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-        { model: 'gpt-4o', max_tokens: 300, messages }
-      );
-      const chatJson = JSON.parse(chatResult.raw.toString());
-      if (chatJson.error) throw new Error('OpenAI demo: ' + chatJson.error.message);
-      responseText = chatJson.choices[0].message.content;
+      // No gateway configured — reject. User must complete setup first.
+      return res.status(400).json({ error: 'No gateway configured. Please complete setup at /setup.' });
     }
 
     // 2. TTS onyx
