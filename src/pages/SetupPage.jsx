@@ -1,35 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, ArrowRight, AlertCircle, Loader, WifiOff, ChevronDown, ChevronUp, Terminal, Link2, Copy, RefreshCw, Check } from 'lucide-react';
+import { CheckCircle, ArrowRight, AlertCircle, Loader, Terminal, Link2, Copy, Check } from 'lucide-react';
 import { setGateway, setBridge, setApiKeys } from '../lib/gateway';
 import './SetupPage.css';
 
 const STEPS = ['Connect', 'Test', 'Ready'];
 
-const OPENCLAW_CONFIG_SNIPPET = `{
-  "gateway": {
-    "auth": {
-      "mode": "token",
-      "token": "your-secret-token"
-    },
-    "http": {
-      "endpoints": {
-        "chatCompletions": { "enabled": true }
-      }
-    }
-  }
-}`;
-
-const RESTART_CMD = 'openclaw gateway restart';
-const DEFAULT_GATEWAY_URL = 'http://127.0.0.1:18789';
 const INSTALL_CMD_MAC = 'curl -fsSL https://www.voiceclaw.io/install.sh | bash';
 const INSTALL_CMD_WIN = 'irm https://www.voiceclaw.io/install.ps1 | iex';
 
 const GATEWAY_PRESETS = [
-  { id: 'openclaw',   label: 'OpenClaw',   url: 'http://127.0.0.1:18789',    tokenRequired: true,  tokenLabel: 'Auth Token',            tokenPlaceholder: 'oc_••••••••',   tokenHint: 'The token from gateway.auth.token in your openclaw.json', hint: 'Your OpenClaw AI agent gateway', local: true },
   { id: 'ollama',     label: 'Ollama',     url: 'http://127.0.0.1:11434',    tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Run: ollama serve — no token needed', local: true },
   { id: 'lmstudio',  label: 'LM Studio',  url: 'http://127.0.0.1:1234',     tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Start LM Studio → Local Server tab — no token needed', local: true },
-  { id: 'openrouter', label: 'OpenRouter', url: 'https://openrouter.ai/api', tokenRequired: true, tokenLabel: 'OpenRouter API Key',    tokenPlaceholder: 'sk-or-v1-...',  tokenHint: 'Get one at openrouter.ai/keys — routes to 100+ models', hint: 'Access 100+ models (Claude, GPT-4, Llama) with one key' },
+  { id: 'openrouter', label: 'OpenRouter', url: 'https://openrouter.ai/api', tokenRequired: true,  tokenLabel: 'OpenRouter API Key',    tokenPlaceholder: 'sk-or-v1-...',  tokenHint: 'Get one at openrouter.ai/keys — routes to 100+ models', hint: 'Access 100+ models (Claude, GPT-4, Llama) with one key' },
   { id: 'openai',    label: 'OpenAI',     url: 'https://api.openai.com',    tokenRequired: true,  tokenLabel: 'OpenAI API Key',        tokenPlaceholder: 'sk-proj-...',   tokenHint: 'Get one at platform.openai.com/api-keys', hint: 'GPT-4o, o1, and other OpenAI models' },
   { id: 'anthropic', label: 'Claude',     url: null,                        tokenRequired: true,  tokenLabel: 'Anthropic API Key',     tokenPlaceholder: 'sk-ant-...',    tokenHint: 'Get one at console.anthropic.com', hint: null, bridgeOnly: true },
   { id: 'custom',    label: 'Custom',     url: '',                          tokenRequired: false, tokenLabel: 'Auth Token (optional)', tokenPlaceholder: 'optional',      tokenHint: 'Any OpenAI-compatible API endpoint', hint: 'Enter any OpenAI-compatible gateway URL' },
@@ -38,8 +21,7 @@ const GATEWAY_PRESETS = [
 export default function SetupPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [url, setUrl] = useState(DEFAULT_GATEWAY_URL);
-  const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [url, setUrl] = useState(GATEWAY_PRESETS[0].url || '');
   const [token, setToken] = useState('');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null); // null | 'ok' | 'error'
@@ -50,7 +32,7 @@ export default function SetupPage() {
   const [openaiKey, setOpenaiKey] = useState('');
   const [groqKey, setGroqKey] = useState('');
   const [copiedKey, setCopiedKey] = useState('');
-  const [gatewayPreset, setGatewayPreset] = useState('openclaw');
+  const [gatewayPreset, setGatewayPreset] = useState('ollama');
   const [timeLeft, setTimeLeft] = useState(null);
   const pollRef = useRef(null);
   const countdownRef = useRef(null);
@@ -337,46 +319,6 @@ export default function SetupPage() {
                   </div>
                 ) : (
                   <>
-                    {/* OpenClaw setup guide — only shown for openclaw preset */}
-                    {gatewayPreset === 'openclaw' && (
-                      <div className="setup-guide">
-                        <button
-                          className="setup-guide-toggle"
-                          onClick={() => setShowSetupGuide(!showSetupGuide)}
-                        >
-                          <Terminal size={13} />
-                          <span>First time? Enable the API endpoint in OpenClaw</span>
-                          {showSetupGuide ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                        </button>
-                        {showSetupGuide && (
-                          <div className="setup-guide-body">
-                            <p className="setup-guide-step">1. Add this to <span className="mono">~/.openclaw/openclaw.json</span>:</p>
-                            <div className="copy-row">
-                              <pre className="setup-code">{OPENCLAW_CONFIG_SNIPPET}</pre>
-                              <button className="icon-btn" onClick={() => copy(OPENCLAW_CONFIG_SNIPPET, 'config-snippet')}>
-                                {copiedKey === 'config-snippet' ? <Check size={13} /> : <Copy size={13} />}
-                              </button>
-                            </div>
-                            <p className="setup-guide-step">2. Restart your gateway:</p>
-                            <div className="copy-row">
-                              <pre className="setup-code">{RESTART_CMD}</pre>
-                              <button className="icon-btn" onClick={() => copy(RESTART_CMD, 'restart-cmd')}>
-                                {copiedKey === 'restart-cmd' ? <Check size={13} /> : <Copy size={13} />}
-                              </button>
-                            </div>
-                            <p className="setup-guide-step">3. Your gateway URL is:</p>
-                            <div className="copy-row">
-                              <pre className="setup-code">{DEFAULT_GATEWAY_URL}</pre>
-                              <button className="icon-btn" onClick={() => copy(DEFAULT_GATEWAY_URL, 'gateway-url')}>
-                                {copiedKey === 'gateway-url' ? <Check size={13} /> : <Copy size={13} />}
-                              </button>
-                            </div>
-                            <p className="setup-guide-step">4. Your token is whatever you set above as <span className="mono">"token"</span>.</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     <div className="form-group">
                       <label className="form-label" htmlFor="gw-url">Gateway URL</label>
                       <input
@@ -540,7 +482,7 @@ export default function SetupPage() {
       </div>
 
       <p className="setup-footer-note">
-        Bridge mode keeps OpenClaw token local. Direct gateway mode stores credentials only in your browser.
+        Bridge mode keeps all API keys on your machine. Direct gateway sends credentials via encrypted HTTPS.
       </p>
     </div>
   );

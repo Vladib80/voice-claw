@@ -37,23 +37,22 @@ async function init() {
 
   // Backend selection
   console.log('\n── AI Backend ──');
-  console.log('1) OpenClaw   (local, http://127.0.0.1:18789)  [default]');
-  console.log('2) Ollama     (local, http://127.0.0.1:11434)');
-  console.log('3) LM Studio  (local, http://127.0.0.1:1234)');
-  console.log('4) OpenRouter (cloud, 100+ models)');
-  console.log('5) OpenAI     (cloud, GPT-4o, o1)');
-  console.log('6) Claude     (cloud, Anthropic API)');
-  console.log('7) Custom URL');
-  const backendNum = (await prompt('Choose backend [1-7, default=1]: ')) || '1';
+  console.log('Pick the LLM that will power your voice conversations:\n');
+  console.log('  1) Ollama     (local, http://127.0.0.1:11434)  [default]');
+  console.log('  2) LM Studio  (local, http://127.0.0.1:1234)');
+  console.log('  3) Claude     (cloud, Anthropic API)');
+  console.log('  4) OpenRouter (cloud, 100+ models)');
+  console.log('  5) OpenAI     (cloud, GPT-4o, o1)');
+  console.log('  6) Custom URL');
+  let backendNum = (await prompt('\nChoose backend [1-6, default=1]: ')) || '1';
 
   const BACKEND_MAP = {
-    '1': { type: 'openclaw',   url: 'http://127.0.0.1:18789',    needsToken: false, isAnthropic: false },
-    '2': { type: 'ollama',     url: 'http://127.0.0.1:11434',    needsToken: false, isAnthropic: false },
-    '3': { type: 'lmstudio',   url: 'http://127.0.0.1:1234',     needsToken: false, isAnthropic: false },
+    '1': { type: 'ollama',     url: 'http://127.0.0.1:11434',    needsToken: false, isAnthropic: false },
+    '2': { type: 'lmstudio',   url: 'http://127.0.0.1:1234',     needsToken: false, isAnthropic: false },
+    '3': { type: 'anthropic',  url: 'https://api.anthropic.com', needsToken: true,  isAnthropic: true,  tokenPrompt: 'Anthropic API Key (sk-ant-...): ' },
     '4': { type: 'openrouter', url: 'https://openrouter.ai/api', needsToken: true,  isAnthropic: false, tokenPrompt: 'OpenRouter API Key (sk-or-v1-...): ' },
     '5': { type: 'openai',     url: 'https://api.openai.com',    needsToken: true,  isAnthropic: false, tokenPrompt: 'OpenAI API Key (sk-proj-...): ' },
-    '6': { type: 'anthropic',  url: 'https://api.anthropic.com', needsToken: true,  isAnthropic: true,  tokenPrompt: 'Anthropic API Key (sk-ant-...): ' },
-    '7': { type: 'custom',     url: null,                         needsToken: false, isAnthropic: false },
+    '6': { type: 'custom',     url: null,                         needsToken: false, isAnthropic: false },
   };
 
   const backend = BACKEND_MAP[backendNum] || BACKEND_MAP['1'];
