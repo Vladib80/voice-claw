@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$ApiBase = if ($env:VOICECLAW_API_BASE) { $env:VOICECLAW_API_BASE } else { "https://voiceclaw.io" }
+$ApiBase = if ($env:VOICECLAW_API_BASE) { $env:VOICECLAW_API_BASE } else { "https://www.voiceclaw.io" }
 $BridgeDir = Join-Path $HOME ".voiceclaw"
 $BridgeFile = Join-Path $BridgeDir "bridge.js"
 

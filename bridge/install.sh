@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_BASE="${VOICECLAW_API_BASE:-https://voiceclaw.io}"
+API_BASE="${VOICECLAW_API_BASE:-https://www.voiceclaw.io}"
 BRIDGE_DIR="$HOME/.voiceclaw"
 BRIDGE_FILE="$BRIDGE_DIR/bridge.js"
 
