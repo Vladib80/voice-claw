@@ -43,5 +43,5 @@ Write-Host "  ✅ Bridge downloaded! Opening pairing setup..."
 Write-Host ""
 
 # Launch init in a fresh window so readline gets clean stdin
-$initCmd = "node '$BridgeFile' init; if (`$LASTEXITCODE -eq 0) { Write-Host ''; Write-Host '  ✅ Paired! Starting bridge in background...'; Write-Host ''; Start-Process -NoNewWindow -FilePath 'node' -ArgumentList '$BridgeFile run'; Write-Host '  🟢 Bridge is running! Return to voiceclaw.io to continue.'; Write-Host '' } else { Write-Host '  ❌ Pairing failed. Try again.' }; Read-Host 'Press Enter to close'"
+$initCmd = "node '$BridgeFile' init; if (`$LASTEXITCODE -eq 0) { Write-Host ''; Write-Host '  Paired! Starting bridge in background...'; Write-Host ''; Start-Process -WindowStyle Hidden -FilePath 'node' -ArgumentList '$BridgeFile', 'run'; Write-Host '  Bridge is running in the background.'; Write-Host '  Return to voiceclaw.io to continue.'; Write-Host '' } else { Write-Host '  Pairing failed. Try again.' }; Read-Host 'Press Enter to close'"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $initCmd -Wait

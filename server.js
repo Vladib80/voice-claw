@@ -29,7 +29,7 @@ app.use((req, res, next) => {
 const ALLOWED_ORIGINS = [
   'https://voiceclaw.io',
   'https://www.voiceclaw.io',
-  'https://yurik-voice.onrender.com',
+  ...(process.env.ALLOWED_ORIGIN ? [process.env.ALLOWED_ORIGIN] : []),
   'http://localhost:3000',
   'http://localhost:5173',
 ];
@@ -404,7 +404,7 @@ app.post('/api/transcribe', transcribeLimiter, (req, res) => {
 // ── POST /api/respond ─────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are a voice assistant powered by the user's own OpenClaw AI agent. Keep responses SHORT and conversational — this is a voice call, not a chat. 2-3 sentences max unless asked to go deeper. No bullet points, no markdown — just natural speech that sounds good out loud.`;
 
-const MAX_TTS_CHARS    = 500;  // cap to protect Vladimir's OpenAI TTS costs
+const MAX_TTS_CHARS    = 500;  // cap TTS input to control API costs
 const MAX_HISTORY_MSG  = 2000; // max chars per history message to block inflated tokens
 
 app.post('/api/respond', respondLimiter, async (req, res) => {
@@ -460,10 +460,10 @@ app.post('/api/respond', respondLimiter, async (req, res) => {
       return res.status(400).json({ error: 'No gateway configured. Complete setup at /setup.' });
     }
 
-    // Cap TTS input — prevents abuse of Vladimir's OpenAI TTS costs
+    // Cap TTS input — prevents abuse and controls API costs
     const ttsInput = String(responseText).slice(0, MAX_TTS_CHARS);
 
-    // TTS via OpenAI (Vladimir's key — server-side only, never exposed to browser)
+    // TTS via OpenAI — API key is server-side only, never exposed to browser
     const ttsBodyStr = JSON.stringify({ model: 'tts-1', input: ttsInput, voice, response_format: 'mp3' });
     const audioBase64 = await new Promise((resolve, reject) => {
       const opts = {
@@ -478,7 +478,12 @@ app.post('/api/respond', respondLimiter, async (req, res) => {
         const cs = [];
         r.on('data', c => cs.push(c));
         r.on('end', () => {
-          if (r.statusCode !== 200) return reject(new Error('TTS error ' + r.statusCode));
+          if (r.statusCode !== 200) {
+            const body = Buffer.concat(cs).toString();
+            let msg = `TTS error ${r.statusCode}`;
+            try { msg = JSON.parse(body).error?.message || msg; } catch {}
+            return reject(new Error(msg));
+          }
           resolve(Buffer.concat(cs).toString('base64'));
         });
       });

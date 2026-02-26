@@ -75,16 +75,16 @@ The bridge makes an **outbound** WebSocket connection from your PC to voiceclaw.
 
 ## Using on multiple devices
 
-The bridge runs on one PC. You can use VoiceClaw from any browser or phone — each device needs to be paired once.
+The bridge runs on one PC. You can use VoiceClaw from any browser or phone.
 
 | Situation | What to do |
 |---|---|
 | First time setup | Install bridge on PC + pair from browser |
 | Same browser, next time | Nothing — open voiceclaw.io/app directly |
-| New phone / new browser | Go to voiceclaw.io/setup → get pair code → run `node ~/.voiceclaw/bridge.js init` on PC |
-| PC already has bridge running | Skip install — just re-pair (init only, no reinstall) |
+| New phone / new browser | Stop bridge on PC → go to voiceclaw.io/setup → get pair code → run `node ~/.voiceclaw/bridge.js init` → run `node ~/.voiceclaw/bridge.js run` |
+| PC already has bridge running | Skip install — stop bridge, re-run init with new pair code, restart bridge |
 
-> The bridge install only ever needs to run **once per PC**. Re-pairing a new device takes ~30 seconds.
+> **Note:** Each pairing creates a new session. Re-pairing from a new device invalidates the previous session. Running from multiple browsers simultaneously is not supported in v1.
 
 ---
 
@@ -92,16 +92,29 @@ The bridge runs on one PC. You can use VoiceClaw from any browser or phone — e
 
 Fork this repo and deploy your own instance. You control everything.
 
+**1. Clone and install:**
 ```bash
+git clone https://github.com/your-username/voiceclaw.git
+cd voiceclaw
+npm install
+```
+
+**2. Create a `.env` file** (copy from `.env.example`):
+```
 OPENAI_API_KEY=sk-proj-...
 GROQ_API_KEY=gsk_...
+VOICECLAW_ADMIN_TOKEN=your-random-secret
+ALLOWED_ORIGIN=https://yourapp.onrender.com
 ```
 
+**3. Build and start:**
 ```bash
-npm install && npm run build && npm start
+npm run build && npm start
 ```
 
-See [Deploy on Render](#) for full instructions.
+The server runs on port `3000` by default. Set `PORT` env var to change it.
+
+**Deploying to Render:** Create a new Web Service, set the build command to `npm run render-build`, start command to `npm start`, and add your env vars in the dashboard.
 
 ---
 

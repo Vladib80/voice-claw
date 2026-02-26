@@ -41,9 +41,20 @@ echo "🔗  Running pairing setup..."
 echo ""
 node "$BRIDGE_FILE" init
 
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌  Pairing failed. Try again."
+  exit 1
+fi
+
 echo ""
-echo "✅  Setup complete!"
+echo "✅  Paired! Starting bridge in background..."
+nohup node "$BRIDGE_FILE" run > "$BRIDGE_DIR/bridge.log" 2>&1 &
+echo "✅  Bridge running (PID $!)"
+echo "   Log: $BRIDGE_DIR/bridge.log"
 echo ""
-echo "   To start the bridge:"
+echo "   Return to voiceclaw.io — your connection will be detected automatically."
+echo ""
+echo "   To restart the bridge later:"
 echo "   node $BRIDGE_FILE run"
 echo ""

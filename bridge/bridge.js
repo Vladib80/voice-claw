@@ -111,11 +111,15 @@ function run() {
     process.exit(1);
   }
 
+  let reconnectDelay = 3000;
+  const MAX_RECONNECT_DELAY = 30000;
+
   const connect = () => {
     const url = wsUrl(cfg.apiBase, cfg.wsToken);
     const ws = new WebSocket(url);
 
     ws.on('open', () => {
+      reconnectDelay = 3000; // reset on successful connect
       console.log(`✅ Bridge connected (${cfg.bridgeId})`);
     });
 
@@ -141,8 +145,9 @@ function run() {
     });
 
     ws.on('close', () => {
-      console.log('Bridge disconnected. Reconnecting in 3s...');
-      setTimeout(connect, 3000);
+      console.log(`Bridge disconnected. Reconnecting in ${reconnectDelay / 1000}s...`);
+      setTimeout(connect, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
     });
 
     ws.on('error', (err) => {

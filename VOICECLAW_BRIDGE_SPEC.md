@@ -63,7 +63,7 @@ Request:
 ```json
 {
   "pairCode": "VC-7M2K-91Q4",
-  "device": { "name": "Vlad-PC", "os": "windows", "bridgeVersion": "0.1.0" },
+  "device": { "name": "My-PC", "os": "windows", "bridgeVersion": "0.1.0" },
   "pubKey": "base64..."
 }
 ```
