@@ -73,6 +73,21 @@ The bridge makes an **outbound** WebSocket connection from your PC to voiceclaw.
 
 ---
 
+## Using on multiple devices
+
+The bridge runs on one PC. You can use VoiceClaw from any browser or phone — each device needs to be paired once.
+
+| Situation | What to do |
+|---|---|
+| First time setup | Install bridge on PC + pair from browser |
+| Same browser, next time | Nothing — open voiceclaw.io/app directly |
+| New phone / new browser | Go to voiceclaw.io/setup → get pair code → run `node ~/.voiceclaw/bridge.js init` on PC |
+| PC already has bridge running | Skip install — just re-pair (init only, no reinstall) |
+
+> The bridge install only ever needs to run **once per PC**. Re-pairing a new device takes ~30 seconds.
+
+---
+
 ## Self-hosting
 
 Fork this repo and deploy your own instance. You control everything.
