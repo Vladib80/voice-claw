@@ -26,9 +26,9 @@ const INSTALL_CMD_MAC = 'curl -fsSL https://www.voiceclaw.io/install.sh | bash';
 const INSTALL_CMD_WIN = 'irm https://www.voiceclaw.io/install.ps1 | iex';
 
 const GATEWAY_PRESETS = [
-  { id: 'openclaw',   label: 'OpenClaw',   url: 'http://localhost:18789',    tokenRequired: true,  tokenLabel: 'Auth Token',            tokenPlaceholder: 'oc_••••••••',   tokenHint: 'The token from gateway.auth.token in your openclaw.json', hint: 'Your OpenClaw AI agent gateway' },
-  { id: 'ollama',     label: 'Ollama',     url: 'http://localhost:11434',    tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Run: ollama serve — no token needed' },
-  { id: 'lmstudio',  label: 'LM Studio',  url: 'http://localhost:1234',     tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Start LM Studio → Local Server tab — no token needed' },
+  { id: 'openclaw',   label: 'OpenClaw',   url: 'http://localhost:18789',    tokenRequired: true,  tokenLabel: 'Auth Token',            tokenPlaceholder: 'oc_••••••••',   tokenHint: 'The token from gateway.auth.token in your openclaw.json', hint: 'Your OpenClaw AI agent gateway', local: true },
+  { id: 'ollama',     label: 'Ollama',     url: 'http://localhost:11434',    tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Run: ollama serve — no token needed', local: true },
+  { id: 'lmstudio',  label: 'LM Studio',  url: 'http://localhost:1234',     tokenRequired: false, tokenLabel: null,                    tokenPlaceholder: null,            tokenHint: null,                                                       hint: 'Start LM Studio → Local Server tab — no token needed', local: true },
   { id: 'openrouter', label: 'OpenRouter', url: 'https://openrouter.ai/api', tokenRequired: true, tokenLabel: 'OpenRouter API Key',    tokenPlaceholder: 'sk-or-v1-...',  tokenHint: 'Get one at openrouter.ai/keys — routes to 100+ models', hint: 'Access 100+ models (Claude, GPT-4, Llama) with one key' },
   { id: 'openai',    label: 'OpenAI',     url: 'https://api.openai.com',    tokenRequired: true,  tokenLabel: 'OpenAI API Key',        tokenPlaceholder: 'sk-proj-...',   tokenHint: 'Get one at platform.openai.com/api-keys', hint: 'GPT-4o, o1, and other OpenAI models' },
   { id: 'anthropic', label: 'Claude',     url: null,                        tokenRequired: true,  tokenLabel: 'Anthropic API Key',     tokenPlaceholder: 'sk-ant-...',    tokenHint: 'Get one at console.anthropic.com', hint: null, bridgeOnly: true },
@@ -210,7 +210,7 @@ export default function SetupPage() {
             </h2>
             <p className="setup-desc">
               {setupMode === 'bridge'
-                ? 'Install the bridge on your PC — it dials out, no port forwarding needed. Works with OpenClaw and any local AI.'
+                ? 'Install the bridge on your PC — the installer will ask you to pick your AI (Ollama, Claude, LM Studio, etc.) and add voice API keys. No port forwarding needed.'
                 : 'Connect any OpenAI-compatible AI. Pick your backend below.'}
             </p>
 
@@ -408,8 +408,10 @@ export default function SetupPage() {
                       </div>
                     )}
 
+                    <p className="form-section-label">Voice Keys (separate from your AI)</p>
+
                     <div className="form-group">
-                      <label className="form-label" htmlFor="openai-key">OpenAI API Key (for voice)</label>
+                      <label className="form-label" htmlFor="openai-key">OpenAI TTS Key (text-to-speech)</label>
                       <input
                         id="openai-key"
                         className="form-input form-input--mono"
@@ -420,11 +422,11 @@ export default function SetupPage() {
                         autoComplete="off"
                         spellCheck={false}
                       />
-                      <span className="form-hint">Used for text-to-speech. Get one at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">platform.openai.com</a></span>
+                      <span className="form-hint">Powers the voice output. {gatewayPreset === 'openai' ? 'Can be the same key as above.' : ''} Get one at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">platform.openai.com</a></span>
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" htmlFor="groq-key">Groq API Key (for speech-to-text)</label>
+                      <label className="form-label" htmlFor="groq-key">Groq STT Key (speech-to-text)</label>
                       <input
                         id="groq-key"
                         className="form-input form-input--mono"
@@ -435,22 +437,20 @@ export default function SetupPage() {
                         autoComplete="off"
                         spellCheck={false}
                       />
-                      <span className="form-hint">Used for transcription. Get one at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com</a></span>
+                      <span className="form-hint">Powers voice input (Groq Whisper). Get one at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com</a></span>
                     </div>
 
-                    {gatewayPreset === 'openclaw' && (
-                      <div className="tailscale-tip">
-                        <div className="tailscale-tip-header">
-                          <WifiOff size={13} />
-                          <span>Want to use VoiceClaw on mobile away from home?</span>
+                    {activePreset.local && (
+                      <div className="preset-local-warning">
+                        <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+                        <div>
+                          <p className="preset-local-warning-title">Local backends need Bridge mode on voiceclaw.io</p>
+                          <p className="preset-local-warning-body">
+                            Direct Gateway only works if this VoiceClaw instance runs on the same machine as {activePreset.label} (self-hosted).
+                            Using voiceclaw.io? The server can't reach your <span className="mono">localhost</span>.{' '}
+                            <button className="link-btn" onClick={() => setSetupMode('bridge')}>Switch to Bridge mode</button> instead — it handles everything.
+                          </p>
                         </div>
-                        <p className="tailscale-tip-body">
-                          Install <a href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer">Tailscale</a> on
-                          both your PC (running OpenClaw) and your phone. Then use your
-                          Tailscale IP instead of localhost — e.g.{' '}
-                          <span className="mono">http://100.x.x.x:18789</span>.
-                          Free, takes 5 minutes, works anywhere.
-                        </p>
                       </div>
                     )}
 

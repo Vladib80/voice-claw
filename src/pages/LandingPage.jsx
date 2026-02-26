@@ -32,8 +32,8 @@ const BACKENDS = [
 
 const HOW_IT_WORKS = [
   { step: '01', title: 'Run one command', desc: 'Go to Setup — a pair code auto-generates. Copy the install command and run it in PowerShell or Terminal.' },
-  { step: '02', title: 'Enter the code', desc: 'Paste the pair code when the installer asks. The bridge connects automatically — no port forwarding, no VPN.' },
-  { step: '03', title: 'Tap and talk', desc: 'Page advances on its own. Tap the orb and speak. Your AI responds in voice, instantly.' },
+  { step: '02', title: 'Pick your AI', desc: 'The installer asks for your pair code, then which AI: Ollama, Claude, OpenClaw, LM Studio, or any custom endpoint.' },
+  { step: '03', title: 'Tap and talk', desc: 'Bridge connects automatically. Open voiceclaw.io/app on any device, tap the orb and speak.' },
 ];
 
 export default function LandingPage() {
@@ -67,8 +67,8 @@ export default function LandingPage() {
             </div>
 
             <div className="landing-phone-bubbles">
-              <div className="phone-bubble phone-bubble--user">Can you help me plan UAE outreach?</div>
-              <div className="phone-bubble phone-bubble--ai">Yes. Let's lock the offer, then send 100/day with one follow-up sequence.</div>
+              <div className="phone-bubble phone-bubble--user">Explain black holes like I'm five</div>
+              <div className="phone-bubble phone-bubble--ai">Imagine a vacuum cleaner so strong that even light can't escape. That's a black hole!</div>
             </div>
           </div>
         </div>
@@ -76,17 +76,17 @@ export default function LandingPage() {
         <div className="landing-hero-text">
           <p className="landing-eyebrow">Works with any AI</p>
           <h1 className="landing-headline">
-            Your voice.<br />Your AI.<br />Your gateway.
+            Your voice.<br />Your AI.<br />Any device.
           </h1>
           <p className="landing-subhead">
-            VoiceClaw is a universal voice interface for your AI — Ollama, Claude, OpenClaw, GPT-4, or any local model.
-            Talk to your AI from any device, any browser, no app install.
+            VoiceClaw is a voice interface for any AI — Ollama, Claude, GPT-4, LM Studio, or any local model.
+            Talk to your AI from your phone, laptop, or tablet. No app install.
           </p>
           <button
             className="landing-cta"
             onClick={() => navigate(connected ? '/app' : '/setup')}
           >
-            {connected ? 'Open App' : 'Connect Your Gateway'}
+            {connected ? 'Open App' : 'Get Started'}
             <ArrowRight size={16} />
           </button>
         </div>
@@ -159,7 +159,7 @@ export default function LandingPage() {
                 <strong>Windows:</strong> <span className="mono">irm https://www.voiceclaw.io/install.ps1 | iex</span><br />
                 <strong>Mac/Linux:</strong> <span className="mono">curl -fsSL https://www.voiceclaw.io/install.sh | bash</span>
               </li>
-              <li>Enter the pair code when the installer asks (2 prompts only)</li>
+              <li>Follow the prompts: pair code, pick your AI backend (Ollama, Claude, etc.), add voice API keys</li>
               <li>Page detects connection automatically → tap the orb and talk 🎙️</li>
             </ol>
             <p className="quickstart-note">⚠️ Windows: use PowerShell, not Command Prompt or Git Bash.</p>
