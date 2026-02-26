@@ -135,7 +135,7 @@ app.post('/api/bridge/pair/complete', (req, res) => {
 
   let targetId = null;
   for (const [id, row] of bridgePairs.entries()) {
-    if (row.pairCode === pairCode) {
+    if (row.pairCode.toUpperCase() === pairCode.toUpperCase()) {
       targetId = id;
       break;
     }

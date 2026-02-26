@@ -31,9 +31,10 @@ async function init() {
   const apiBase = process.env.VOICECLAW_API_BASE || 'https://www.voiceclaw.io';
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const prompt = makePrompt(rl);
-  const pairCode = await prompt('Enter VoiceClaw pair code (VC-XXXX-XXXX): ');
+  const pairCode = (await prompt('Enter VoiceClaw pair code (VC-XXXX-XXXX): ')).toUpperCase();
   const deviceName = await prompt('Device name (optional): ') || os.hostname();
   rl.close();
+  process.stdin.destroy();
   const gatewayUrl = 'http://127.0.0.1:18789';
   const gatewayToken = '';
 
