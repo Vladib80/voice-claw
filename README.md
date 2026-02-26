@@ -2,15 +2,34 @@
 
 **Talk to your OpenClaw AI agent by voice. From any browser. On any device.**
 
-VoiceClaw is an open-source voice interface for [OpenClaw](https://openclaw.ai). It bridges your phone or browser to your local OpenClaw gateway — no app install, no cloud lock-in, no token exposure.
+VoiceClaw is an open-source voice interface for [OpenClaw](https://openclaw.ai). Run the bridge on your machine — then open **voiceclaw.io/app** on any phone or browser and talk to your AI agent.
 
 🌐 **Live:** [voiceclaw.io](https://www.voiceclaw.io)
 
 ---
 
+## Privacy & Security
+
+- **Your conversations stay yours.** Each user pairs their own private bridge. Nobody else can see or access your sessions.
+- **Your OpenClaw token never leaves your machine.** The bridge runs locally and makes an outbound connection to VoiceClaw — no port forwarding, no Tailscale, no exposing localhost to the internet.
+- **No data mixing.** voiceclaw.io routes each request only to the bridge it was paired with. User A cannot access User B's agent.
+- **Open source.** Don't trust us? Read the code, or self-host the whole stack.
+
+```
+[Your phone / browser]
+        ↕ HTTPS
+[VoiceClaw Server — voiceclaw.io]
+        ↕ WebSocket (outbound from your PC — no port forwarding needed)
+[Bridge running on your PC]
+        ↕ localhost only
+[Your OpenClaw Gateway → Your AI Agent]
+```
+
+---
+
 ## Setup in 2 minutes
 
-1. Go to **[voiceclaw.io/setup](https://www.voiceclaw.io/setup)** — a pair code generates automatically
+1. Go to **[voiceclaw.io/setup](https://www.voiceclaw.io/setup)** — pair code generates automatically
 2. Run the installer on your OpenClaw machine:
 
    **Windows (PowerShell):**
@@ -23,61 +42,21 @@ VoiceClaw is an open-source voice interface for [OpenClaw](https://openclaw.ai).
    curl -fsSL https://www.voiceclaw.io/install.sh | bash
    ```
 
-3. Enter the pair code when the installer asks (just 2 prompts)
-4. Page detects your bridge automatically → tap the orb and talk 🎙️
+3. Enter the pair code when asked (2 prompts only)
+4. Page detects your bridge automatically → open voiceclaw.io/app and talk 🎙️
 
-> ⚠️ Windows users: run in **PowerShell**, not Command Prompt or Git Bash.
-
----
-
-## How it works
-
-```
-[Browser / Phone]
-      ↕ HTTPS
-[VoiceClaw Server]
-      ↕ WebSocket (Bridge)
-[Your PC running OpenClaw]
-      ↕ localhost
-[OpenClaw Gateway → Your AI Agent]
-```
-
-- **Speech-to-text:** Groq Whisper (fast, free tier available)
-- **AI response:** Routed through your OpenClaw gateway (your keys, your agent)
-- **Text-to-speech:** OpenAI TTS `onyx` voice
-- **Bridge:** Lightweight Node.js process running on your machine
-
-Your OpenClaw token never leaves your machine.
+> ⚠️ Windows: use **PowerShell**, not Command Prompt or Git Bash.
 
 ---
 
-## Self-hosting
+## How the bridge works
 
-### Environment variables
+The bridge makes an **outbound** WebSocket connection from your PC to voiceclaw.io. This means:
 
-```bash
-OPENAI_API_KEY=sk-proj-...
-GROQ_API_KEY=gsk_...
-VOICECLAW_ADMIN_TOKEN=your-admin-token   # optional, for /admin metrics
-```
-
-### Run locally
-
-```bash
-npm install
-npm run build
-npm start
-```
-
-Open: `http://localhost:3000`
-
-### Deploy on Render
-
-1. Fork this repo
-2. Create a new **Web Service** in Render
-3. Build command: `npm run render-build`
-4. Start command: `node server.js`
-5. Add env vars: `OPENAI_API_KEY`, `GROQ_API_KEY`
+- ✅ Works behind any firewall or router — no port forwarding needed
+- ✅ No Tailscale, no ngrok, no VPN required
+- ✅ Your OpenClaw gateway stays on `localhost` — never exposed to the internet
+- ✅ If the bridge is off, nobody can reach your agent — you're in full control
 
 ---
 
@@ -91,6 +70,23 @@ Open: `http://localhost:3000`
 | TTS | OpenAI TTS |
 | Bridge | Node.js (`~/.voiceclaw/bridge.js`) |
 | Hosting | Render |
+
+---
+
+## Self-hosting
+
+Fork this repo and deploy your own instance. You control everything.
+
+```bash
+OPENAI_API_KEY=sk-proj-...
+GROQ_API_KEY=gsk_...
+```
+
+```bash
+npm install && npm run build && npm start
+```
+
+See [Deploy on Render](#) for full instructions.
 
 ---
 
