@@ -38,7 +38,9 @@ export default function SetupPage() {
   const [setupMode, setSetupMode] = useState('bridge'); // bridge | gateway
   const [pairing, setPairing] = useState({ loading: false, pairId: '', pairCode: '', status: '', connected: false, expiresAt: null, bridgeId: '' });
   const [copiedKey, setCopiedKey] = useState('');
+  const [timeLeft, setTimeLeft] = useState(null);
   const pollRef = useRef(null);
+  const countdownRef = useRef(null);
 
   // Auto-generate pair code when bridge mode is selected
   useEffect(() => {
@@ -46,6 +48,22 @@ export default function SetupPage() {
       startPairing();
     }
   }, [setupMode]); // eslint-disable-line
+
+  // Countdown timer for pair code expiry
+  useEffect(() => {
+    if (!pairing.expiresAt) return;
+    clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => {
+      const secs = Math.max(0, Math.floor((pairing.expiresAt - Date.now()) / 1000));
+      setTimeLeft(secs);
+      if (secs === 0) {
+        clearInterval(countdownRef.current);
+        setPairing(p => ({ ...p, pairCode: '', pairId: '', status: 'expired' }));
+        startPairing(); // auto-refresh expired code
+      }
+    }, 1000);
+    return () => clearInterval(countdownRef.current);
+  }, [pairing.expiresAt]); // eslint-disable-line
 
   // Auto-poll for bridge status every 2s once pair code exists
   useEffect(() => {
@@ -189,12 +207,21 @@ export default function SetupPage() {
                   <div className="bridge-substep-body">
                     <p className="bridge-substep-label">{pairing.pairCode ? 'Pair code ready' : 'Generating pair code...'}</p>
                     {pairing.pairCode && (
-                      <div className="pair-code-row">
-                        <span className="pair-code mono">{pairing.pairCode}</span>
-                        <button className="icon-btn" onClick={() => copy(pairing.pairCode, 'pair-code')}>
-                          {copiedKey === 'pair-code' ? <Check size={13} /> : <Copy size={13} />}
-                        </button>
-                      </div>
+                      <>
+                        <div className="pair-code-row">
+                          <span className="pair-code mono">{pairing.pairCode}</span>
+                          <button className="icon-btn" onClick={() => copy(pairing.pairCode, 'pair-code')}>
+                            {copiedKey === 'pair-code' ? <Check size={13} /> : <Copy size={13} />}
+                          </button>
+                        </div>
+                        {timeLeft !== null && (
+                          <p className={`pair-code-expiry ${timeLeft < 60 ? 'pair-code-expiry--urgent' : ''}`}>
+                            {timeLeft > 0
+                              ? `⏱ Code expires in ${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, '0')}`
+                              : '🔄 Code expired — generating new one...'}
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

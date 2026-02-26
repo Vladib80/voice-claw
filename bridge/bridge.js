@@ -46,7 +46,16 @@ async function init() {
 
   const data = await res.json();
   if (!res.ok) {
-    console.error('Pairing failed:', data.error || res.statusText);
+    const msg = data.error || res.statusText;
+    if (msg.toLowerCase().includes('expired')) {
+      console.error('\n❌ Pair code expired — codes are valid for 10 minutes.');
+      console.error('   Go to voiceclaw.io/setup, get a fresh code, then run this command again immediately.\n');
+    } else if (msg.toLowerCase().includes('invalid') || res.status === 404) {
+      console.error('\n❌ Pair code not found — double-check you typed it correctly.');
+      console.error('   Expected format: VC-XXXX-XXXX (letters and numbers, no spaces)\n');
+    } else {
+      console.error(`\n❌ Pairing failed: ${msg}\n`);
+    }
     process.exit(1);
   }
 

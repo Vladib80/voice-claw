@@ -513,3 +513,18 @@
   margin: 0 0 8px;
   line-height: 1.5;
 }
+
+.pair-code-expiry {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-family: 'JetBrains Mono', monospace;
+  margin: 4px 0 0;
+}
+.pair-code-expiry--urgent {
+  color: #f59e0b;
+  animation: pulse-text 1s ease-in-out infinite;
+}
+@keyframes pulse-text {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
