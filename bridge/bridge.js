@@ -62,7 +62,26 @@ async function init() {
   let gatewayToken = '';
   let anthropicKey = '';
 
-  if (backend.url === null) {
+  // Auto-detect OpenClaw config
+  if (backend.type === 'openclaw') {
+    const ocPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
+    let autoToken = '';
+    let autoPort = 18789;
+    try {
+      const ocCfg = JSON.parse(fs.readFileSync(ocPath, 'utf8'));
+      autoToken = ocCfg?.gateway?.auth?.token || '';
+      autoPort = ocCfg?.gateway?.port || 18789;
+    } catch {}
+    if (autoToken) {
+      console.log(`\n  Auto-detected OpenClaw gateway token from ${ocPath}`);
+      gatewayToken = autoToken;
+      gatewayUrl = `http://127.0.0.1:${autoPort}`;
+      console.log(`  Gateway: ${gatewayUrl}`);
+    } else {
+      console.log('\n  Could not auto-detect OpenClaw config.');
+      gatewayToken = await prompt(backend.tokenPrompt);
+    }
+  } else if (backend.url === null) {
     gatewayUrl = await prompt('Gateway URL (e.g. http://localhost:8080/v1): ');
     const customToken = await prompt('Auth token (leave blank if none): ');
     if (customToken) gatewayToken = customToken;
