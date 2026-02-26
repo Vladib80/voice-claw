@@ -345,8 +345,15 @@ function run() {
       }
     });
 
-    ws.on('close', () => {
-      console.log(`Bridge disconnected. Reconnecting in ${reconnectDelay / 1000}s...`);
+    ws.on('close', (code, reason) => {
+      const reasonStr = reason?.toString() || '';
+      if (code === 1008 && reasonStr.includes('invalid token')) {
+        console.error('❌ Server rejected the connection: invalid token.');
+        console.error('   Your bridge pairing may have expired (server restarted).');
+        console.error('   Fix: re-run "node bridge.js init" to pair again.\n');
+        process.exit(1);
+      }
+      console.log(`Bridge disconnected (code=${code}${reasonStr ? ', ' + reasonStr : ''}). Reconnecting in ${reconnectDelay / 1000}s...`);
       setTimeout(connect, reconnectDelay);
       reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
     });

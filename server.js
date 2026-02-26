@@ -87,10 +87,44 @@ app.get('/bridge.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'bridge', 'bridge.js'));
 });
 
-// ── BRIDGE PAIRING (v1 in-memory) ─────────────────────────────────────────────
+// ── BRIDGE PAIRING (persisted to disk) ────────────────────────────────────────
+const PAIRS_FILE    = path.join(__dirname, 'data', 'bridge-pairs.json');
 const bridgePairs   = new Map(); // pairId  -> { pairCode, status, expiresAt, device, bridgeId, wsToken }
 const bridgeSockets = new Map(); // bridgeId -> ws
 const bridgePending = new Map(); // reqId    -> { resolve, reject, timer }
+
+// Load persisted pairs on startup (only completed ones survive restarts)
+function loadBridgePairs() {
+  try {
+    if (!fs.existsSync(PAIRS_FILE)) return;
+    const data = JSON.parse(fs.readFileSync(PAIRS_FILE, 'utf8'));
+    let loaded = 0;
+    for (const [id, row] of Object.entries(data)) {
+      if (row.status === 'paired' && row.bridgeId && row.wsToken) {
+        bridgePairs.set(id, row);
+        loaded++;
+      }
+    }
+    if (loaded > 0) console.log(`Loaded ${loaded} persisted bridge pair(s)`);
+  } catch (e) { console.error('Failed to load bridge pairs:', e.message); }
+}
+
+function saveBridgePairs() {
+  try {
+    const dir = path.dirname(PAIRS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    // Only persist completed pairs (pending ones are ephemeral)
+    const toSave = {};
+    for (const [id, row] of bridgePairs.entries()) {
+      if (row.status === 'paired' && row.bridgeId && row.wsToken) {
+        toSave[id] = row;
+      }
+    }
+    fs.writeFileSync(PAIRS_FILE, JSON.stringify(toSave, null, 2));
+  } catch (e) { console.error('Failed to save bridge pairs:', e.message); }
+}
+
+loadBridgePairs();
 
 // Clean up expired pair entries every 15 minutes
 setInterval(() => {
@@ -209,6 +243,7 @@ app.post('/api/bridge/pair/complete', pairCompleteLimiter, (req, res) => {
   markUniqueBridge(row.bridgeId);
   saveMetrics();
 
+  saveBridgePairs(); // persist so bridge survives server restarts
   res.json({ ok: true, pairId: targetId, bridgeId: row.bridgeId, wsToken, scope: 'tools_safe' });
 });
 
