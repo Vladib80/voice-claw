@@ -152,11 +152,11 @@ async function init() {
   console.log(`Config saved: ${CONFIG_PATH}`);
 }
 
-function wsUrl(apiBase, token) {
+function wsUrl(apiBase, bridgeId, token) {
   const u = new URL(apiBase);
   u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
   u.pathname = '/api/bridge/ws';
-  u.search = `?token=${encodeURIComponent(token)}`;
+  u.search = `?bridgeId=${encodeURIComponent(bridgeId)}&token=${encodeURIComponent(token)}`;
   return u.toString();
 }
 
@@ -319,7 +319,7 @@ function run() {
   const MAX_RECONNECT_DELAY = 30000;
 
   const connect = () => {
-    const url = wsUrl(cfg.apiBase, cfg.wsToken);
+    const url = wsUrl(cfg.apiBase, cfg.bridgeId, cfg.wsToken);
     const ws = new WebSocket(url);
 
     ws.on('open', () => {

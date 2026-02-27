@@ -87,44 +87,23 @@ app.get('/bridge.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'bridge', 'bridge.js'));
 });
 
-// ── BRIDGE PAIRING (persisted to disk) ────────────────────────────────────────
-const PAIRS_FILE    = path.join(__dirname, 'data', 'bridge-pairs.json');
+// ── BRIDGE PAIRING (stateless HMAC tokens — survives any restart) ─────────────
+const BRIDGE_SECRET = process.env.VOICECLAW_ADMIN_TOKEN || crypto.randomBytes(32).toString('hex');
 const bridgePairs   = new Map(); // pairId  -> { pairCode, status, expiresAt, device, bridgeId, wsToken }
 const bridgeSockets = new Map(); // bridgeId -> ws
 const bridgePending = new Map(); // reqId    -> { resolve, reject, timer }
 
-// Load persisted pairs on startup (only completed ones survive restarts)
-function loadBridgePairs() {
-  try {
-    if (!fs.existsSync(PAIRS_FILE)) return;
-    const data = JSON.parse(fs.readFileSync(PAIRS_FILE, 'utf8'));
-    let loaded = 0;
-    for (const [id, row] of Object.entries(data)) {
-      if (row.status === 'paired' && row.bridgeId && row.wsToken) {
-        bridgePairs.set(id, row);
-        loaded++;
-      }
-    }
-    if (loaded > 0) console.log(`Loaded ${loaded} persisted bridge pair(s)`);
-  } catch (e) { console.error('Failed to load bridge pairs:', e.message); }
+// Generate a deterministic token from bridgeId — verifiable without storage
+function makeBridgeToken(bridgeId) {
+  return crypto.createHmac('sha256', BRIDGE_SECRET).update(bridgeId).digest('hex');
 }
 
-function saveBridgePairs() {
-  try {
-    const dir = path.dirname(PAIRS_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    // Only persist completed pairs (pending ones are ephemeral)
-    const toSave = {};
-    for (const [id, row] of bridgePairs.entries()) {
-      if (row.status === 'paired' && row.bridgeId && row.wsToken) {
-        toSave[id] = row;
-      }
-    }
-    fs.writeFileSync(PAIRS_FILE, JSON.stringify(toSave, null, 2));
-  } catch (e) { console.error('Failed to save bridge pairs:', e.message); }
+// Verify a token: recompute HMAC and compare
+function verifyBridgeToken(bridgeId, token) {
+  if (!bridgeId || !token) return false;
+  const expected = makeBridgeToken(bridgeId);
+  return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(token, 'hex'));
 }
-
-loadBridgePairs();
 
 // Clean up expired pair entries every 15 minutes
 setInterval(() => {
@@ -236,14 +215,14 @@ app.post('/api/bridge/pair/complete', pairCompleteLimiter, (req, res) => {
   row.device   = device || { name: 'Unknown device' };
   row.bridgeId = `br_${crypto.randomBytes(6).toString('hex')}`;
 
-  const wsToken = crypto.randomBytes(24).toString('hex');
+  // HMAC token — server can verify without storing it (survives restarts/redeploys)
+  const wsToken = makeBridgeToken(row.bridgeId);
   row.wsToken = wsToken;
 
   metrics.pairCompleted += 1;
   markUniqueBridge(row.bridgeId);
   saveMetrics();
 
-  saveBridgePairs(); // persist so bridge survives server restarts
   res.json({ ok: true, pairId: targetId, bridgeId: row.bridgeId, wsToken, scope: 'tools_safe' });
 });
 
@@ -626,19 +605,18 @@ const wss    = new WebSocketServer({ server, path: '/api/bridge/ws' });
 
 wss.on('connection', (ws, req) => {
   try {
-    const url   = new URL(req.url, `http://${req.headers.host}`);
-    const token = url.searchParams.get('token');
-    if (!token) { ws.close(1008, 'missing token'); return; }
+    const url      = new URL(req.url, `http://${req.headers.host}`);
+    const token    = url.searchParams.get('token');
+    const bridgeId = url.searchParams.get('bridgeId');
 
-    let matched = null;
-    for (const row of bridgePairs.values()) {
-      if (row.wsToken === token) { matched = row; break; }
-    }
-    if (!matched?.bridgeId) { ws.close(1008, 'invalid token'); return; }
+    if (!token || !bridgeId) { ws.close(1008, 'missing token or bridgeId'); return; }
 
-    bridgeSockets.set(matched.bridgeId, ws);
+    // Stateless HMAC verification — no storage lookup needed, survives any restart
+    if (!verifyBridgeToken(bridgeId, token)) { ws.close(1008, 'invalid token'); return; }
+
+    bridgeSockets.set(bridgeId, ws);
     metrics.bridgeConnectedEvents += 1;
-    markUniqueBridge(matched.bridgeId);
+    markUniqueBridge(bridgeId);
     saveMetrics();
 
     ws.on('message', (buf) => {
@@ -655,7 +633,7 @@ wss.on('connection', (ws, req) => {
     });
 
     ws.on('close', () => {
-      if (bridgeSockets.get(matched.bridgeId) === ws) bridgeSockets.delete(matched.bridgeId);
+      if (bridgeSockets.get(bridgeId) === ws) bridgeSockets.delete(bridgeId);
       metrics.bridgeDisconnectedEvents += 1;
       saveMetrics();
     });
