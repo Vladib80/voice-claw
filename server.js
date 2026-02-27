@@ -89,7 +89,12 @@ app.get('/bridge.js', (req, res) => {
 });
 
 // ── BRIDGE PAIRING (stateless HMAC tokens — survives any restart) ─────────────
-const BRIDGE_SECRET = process.env.VOICECLAW_ADMIN_TOKEN || crypto.randomBytes(32).toString('hex');
+// BRIDGE_SECRET is a server signing key, like JWT_SECRET. Set it once in your env.
+// Without it, tokens break on every deploy (random fallback).
+const BRIDGE_SECRET = process.env.BRIDGE_SECRET || process.env.VOICECLAW_ADMIN_TOKEN || crypto.randomBytes(32).toString('hex');
+if (!process.env.BRIDGE_SECRET && !process.env.VOICECLAW_ADMIN_TOKEN) {
+  console.warn('⚠️  No BRIDGE_SECRET env var — bridge tokens will not survive restarts. Set BRIDGE_SECRET in your hosting environment.');
+}
 const bridgePairs   = new Map(); // pairId  -> { pairCode, status, expiresAt, device, bridgeId, wsToken }
 const bridgeSockets = new Map(); // bridgeId -> ws
 const bridgePending = new Map(); // reqId    -> { resolve, reject, timer }
