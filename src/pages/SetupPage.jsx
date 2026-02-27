@@ -8,8 +8,8 @@ const STEPS = ['Connect', 'Test', 'Ready'];
 
 // Platform-specific install commands
 const makeInstallCmd = (pairCode, platform) => {
-  if (platform === 'win') return `irm voiceclaw.io/install.ps1 | iex`;
-  return `curl -fsSL voiceclaw.io/install.sh | bash -s ${pairCode}`;
+  if (platform === 'win') return `irm https://www.voiceclaw.io/install.ps1 | iex`;
+  return `curl -fsSL https://www.voiceclaw.io/install.sh | bash -s ${pairCode}`;
 };
 
 const GATEWAY_PRESETS = [

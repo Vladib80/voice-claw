@@ -3,6 +3,7 @@ set -euo pipefail
 
 PAIR_CODE="${1:-}"
 API_BASE="${VOICECLAW_API_BASE:-https://www.voiceclaw.io}"
+# Note: bare voiceclaw.io doesn't resolve — always use www
 BRIDGE_DIR="$HOME/.voiceclaw"
 
 echo ""
