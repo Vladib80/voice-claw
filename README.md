@@ -110,7 +110,7 @@ The bridge makes an **outbound** WebSocket connection from your PC to voiceclaw.
 | Backend | Node.js + Express + WebSocket |
 | STT | Groq Whisper (via bridge or direct) |
 | TTS | OpenAI TTS (via bridge or direct) |
-| Bridge | Node.js (`~/.voiceclaw/bridge.js`) |
+| Bridge | Node.js (`~/.voiceclaw/cli.js`) |
 | Hosting | Render |
 
 ---
@@ -123,8 +123,8 @@ The bridge runs on one PC. You can use VoiceClaw from any browser or phone.
 |---|---|
 | First time setup | Install bridge on PC + pair from browser |
 | Same browser, next time | Nothing — open voiceclaw.io/app directly |
-| New phone / new browser | Go to voiceclaw.io/setup → get pair code → run `node ~/.voiceclaw/bridge.js init` on your PC → run `node ~/.voiceclaw/bridge.js run` |
-| Bridge already running | Stop bridge → re-init with new pair code → restart |
+| New phone / new browser | Go to voiceclaw.io/setup → get pair code → run `node ~/.voiceclaw/cli.js VC-XXXX-XXXX` on your PC |
+| Bridge already running | Stop bridge (`node ~/.voiceclaw/cli.js stop`) → re-pair with new code → restarts automatically |
 
 > **Note:** Re-pairing from a new device starts a new session. Simultaneous sessions from multiple browsers are not supported in v1.
 
@@ -143,11 +143,12 @@ npm install
 
 **2. Create a `.env` file** (copy from `.env.example`):
 ```
-VOICECLAW_ADMIN_TOKEN=your-random-secret
+BRIDGE_SECRET=your-random-secret          # Signs bridge tokens (like JWT_SECRET)
+VOICECLAW_ADMIN_TOKEN=your-admin-secret   # Admin API access
 ALLOWED_ORIGIN=https://yourapp.onrender.com
 ```
 
-> Note: `OPENAI_API_KEY` and `GROQ_API_KEY` are deprecated server-side. Users bring their own keys via the bridge or setup page.
+> Note: `OPENAI_API_KEY` and `GROQ_API_KEY` are deprecated server-side. Users bring their own keys via the bridge.
 
 **3. Build and start:**
 ```bash
