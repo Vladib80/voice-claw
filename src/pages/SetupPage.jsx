@@ -6,8 +6,8 @@ import './SetupPage.css';
 
 const STEPS = ['Connect', 'Test', 'Ready'];
 
-const INSTALL_CMD_MAC = 'curl -fsSL https://www.voiceclaw.io/install.sh | bash';
-const INSTALL_CMD_WIN = 'irm https://www.voiceclaw.io/install.ps1 | iex';
+// Single install command — npx handles everything
+const makeInstallCmd = (pairCode) => `npx voiceclaw ${pairCode}`;
 
 const GATEWAY_PRESETS = [
   { id: 'openclaw',   label: 'OpenClaw',   url: 'http://127.0.0.1:18789',    tokenRequired: true,  tokenLabel: 'Gateway Token',         tokenPlaceholder: 'your-gateway-token', tokenHint: 'Find it in ~/.openclaw/openclaw.json → gateway.auth.token', hint: 'Your OpenClaw AI agent (enable chatCompletions endpoint first)', local: true },
@@ -242,24 +242,18 @@ export default function SetupPage() {
                     {pairing.status === 'paired' || pairing.connected ? <CheckCircle size={16} /> : <span>2</span>}
                   </div>
                   <div className="bridge-substep-body">
-                    <p className="bridge-substep-label">Run installer on your PC</p>
+                    <p className="bridge-substep-label">Run on your PC</p>
                     {pairing.pairCode && (
                       <>
-                        <p className="bridge-substep-hint">Open PowerShell on Windows or Terminal on Mac and run:</p>
+                        <p className="bridge-substep-hint">Open any terminal and paste:</p>
                         <div className="copy-row">
-                          <pre className="setup-code">{INSTALL_CMD_WIN}</pre>
-                          <button className="icon-btn" onClick={() => copy(INSTALL_CMD_WIN, 'install-win')}>
-                            {copiedKey === 'install-win' ? <Check size={13} /> : <Copy size={13} />}
+                          <pre className="setup-code">{makeInstallCmd(pairing.pairCode)}</pre>
+                          <button className="icon-btn" onClick={() => copy(makeInstallCmd(pairing.pairCode), 'install')}>
+                            {copiedKey === 'install' ? <Check size={13} /> : <Copy size={13} />}
                           </button>
                         </div>
-                        <div className="copy-row" style={{ marginTop: 6 }}>
-                          <pre className="setup-code">{INSTALL_CMD_MAC}</pre>
-                          <button className="icon-btn" onClick={() => copy(INSTALL_CMD_MAC, 'install-mac')}>
-                            {copiedKey === 'install-mac' ? <Check size={13} /> : <Copy size={13} />}
-                          </button>
-                        </div>
-                        <p className="bridge-substep-hint" style={{ marginTop: 8 }}>
-                          Enter the pair code <strong>{pairing.pairCode}</strong> when prompted.
+                        <p className="bridge-substep-hint" style={{ marginTop: 8, fontSize: '0.7rem' }}>
+                          Requires <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer" style={{ color: '#a78bfa' }}>Node.js 18+</a>. Auto-detects your local AI (Ollama, OpenClaw, LM Studio).
                         </p>
                       </>
                     )}

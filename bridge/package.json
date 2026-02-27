@@ -1,0 +1,42 @@
+{
+  "name": "voiceclaw",
+  "version": "1.0.0",
+  "description": "Connect VoiceClaw to your local AI. One command, any LLM.",
+  "bin": {
+    "voiceclaw": "./cli.js"
+  },
+  "main": "cli.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "cli.js",
+    "lib/",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "ws": "^8.19.0"
+  },
+  "keywords": [
+    "voiceclaw",
+    "voice",
+    "ai",
+    "bridge",
+    "ollama",
+    "openclaw",
+    "lm-studio",
+    "claude",
+    "voice-assistant",
+    "tts",
+    "stt"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Vladib80/voice-claw",
+    "directory": "bridge"
+  },
+  "homepage": "https://www.voiceclaw.io",
+  "author": "Vladimir B"
+}
