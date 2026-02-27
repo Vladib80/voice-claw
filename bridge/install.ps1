@@ -64,6 +64,6 @@ if (-not $PairCode) {
   }
 }
 
-# ── Run bridge ─────────────────────────────────────────────────────────────────
+# ── Pair and start bridge in background ────────────────────────────────────────
 Write-Host ""
-& node (Join-Path $BridgeDir "cli.js") $PairCode
+& node (Join-Path $BridgeDir "cli.js") $PairCode --daemon

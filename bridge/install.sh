@@ -62,6 +62,6 @@ if [ -z "$PAIR_CODE" ]; then
   fi
 fi
 
-# ── Run bridge ─────────────────────────────────────────────────────────────────
+# ── Pair and start bridge in background ────────────────────────────────────────
 echo ""
-node "$BRIDGE_DIR/cli.js" "$PAIR_CODE"
+node "$BRIDGE_DIR/cli.js" "$PAIR_CODE" --daemon
