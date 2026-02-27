@@ -165,7 +165,7 @@ async function cmdRun() {
   if (!cfg) {
     ui.banner(VERSION);
     console.log(`  No config found. Pair first:\n`);
-    console.log(`  ${ui.bold('npx voiceclaw VC-XXXX-XXXX')}`);
+    console.log(`  ${ui.bold('node ~/.voiceclaw/cli.js VC-XXXX-XXXX')}`);
     console.log(`  ${ui.dim('Get the code from voiceclaw.io on your phone.')}\n`);
     process.exit(1);
   }
@@ -197,7 +197,7 @@ function runForeground(cfg) {
     },
     onFatal(msg) {
       console.error(`\n  ${ui.fail} ${msg}`);
-      console.error(`  ${ui.dim('Get a new code from your phone and run:')} ${ui.bold('npx voiceclaw VC-XXXX-XXXX')}\n`);
+      console.error(`  ${ui.dim('Get a new code from your phone and run:')} ${ui.bold('node ~/.voiceclaw/cli.js VC-XXXX-XXXX')}\n`);
       process.exit(1);
     },
   });
@@ -230,7 +230,7 @@ function startDaemon() {
 
   console.log(`  ${ui.ok} Bridge running in background (PID ${child.pid})`);
   console.log(`  ${ui.dim(`Log: ${LOG_PATH}`)}`);
-  console.log(`  ${ui.dim(`Stop: npx voiceclaw stop`)}\n`);
+  console.log(`  ${ui.dim(`Stop: node ~/.voiceclaw/cli.js stop`)}\n`);
   process.exit(0);
 }
 
@@ -266,7 +266,7 @@ function cmdStop() {
 function cmdStatus() {
   const cfg = loadConfig();
   if (!cfg) {
-    console.log('  Not paired. Run: npx voiceclaw VC-XXXX-XXXX');
+    console.log('  Not paired. Run the install script from voiceclaw.io/setup');
     return;
   }
 
@@ -287,7 +287,7 @@ function cmdStatus() {
 async function cmdConfig() {
   const cfg = loadConfig();
   if (!cfg) {
-    console.log('  Not paired yet. Run: npx voiceclaw VC-XXXX-XXXX');
+    console.log('  Not paired yet. Run the install script from voiceclaw.io/setup');
     process.exit(1);
   }
 
@@ -386,22 +386,23 @@ async function pickBackendManual() {
 /* ── Help ───────────────────────────────────────────── */
 
 function printHelp() {
+  const cmd = 'node ~/.voiceclaw/cli.js';
   console.log(`
   ${ui.bold('VoiceClaw Bridge')} ${ui.dim(`v${VERSION}`)}
 
   ${ui.bold('Usage:')}
-    npx voiceclaw VC-XXXX-XXXX    Pair and start bridge
-    npx voiceclaw                  Start with saved config
-    npx voiceclaw --daemon         Run in background
-    npx voiceclaw stop             Stop background bridge
-    npx voiceclaw status           Show bridge info
-    npx voiceclaw config           Edit settings (voice keys, backend)
-    npx voiceclaw unpair           Delete config and stop
+    ${cmd} VC-XXXX-XXXX    Pair and start bridge
+    ${cmd}                  Start with saved config
+    ${cmd} --daemon         Run in background
+    ${cmd} stop             Stop background bridge
+    ${cmd} status           Show bridge info
+    ${cmd} config           Edit settings (voice keys, backend)
+    ${cmd} unpair           Delete config and stop
 
   ${ui.bold('First time?')}
     1. Open voiceclaw.io on your phone
     2. Copy the pair code
-    3. Run: npx voiceclaw VC-XXXX-XXXX
+    3. Run the install command shown on the setup page
 
   ${ui.dim('https://github.com/Vladib80/voice-claw')}
 `);

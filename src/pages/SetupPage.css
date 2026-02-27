@@ -526,6 +526,16 @@
   line-height: 1.5;
 }
 
+.platform-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: 'JetBrains Mono', monospace;
+  margin: 0 0 4px;
+}
+
 .pair-code-expiry {
   font-size: 0.72rem;
   color: #64748b;

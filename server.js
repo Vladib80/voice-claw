@@ -72,7 +72,7 @@ function isPrivateUrl(urlStr) {
 // ── Keepalive ping ────────────────────────────────────────────────────────────
 app.get('/ping', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
-// ── Bridge installer scripts ──────────────────────────────────────────────────
+// ── Bridge installer scripts + files ──────────────────────────────────────────
 app.get('/install.sh', (req, res) => {
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.sendFile(path.join(__dirname, 'bridge', 'install.sh'));
@@ -83,10 +83,17 @@ app.get('/install.ps1', (req, res) => {
   res.sendFile(path.join(__dirname, 'bridge', 'install.ps1'));
 });
 
-app.get('/bridge.js', (req, res) => {
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.sendFile(path.join(__dirname, 'bridge', 'bridge.js'));
-});
+// Serve all bridge files at /bridge/* (cli.js, package.json, lib/*.js)
+// Used by install scripts to download the modular bridge
+app.use('/bridge', express.static(path.join(__dirname, 'bridge'), {
+  index: false,
+  dotfiles: 'deny',
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.js') || filePath.endsWith('.json')) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    }
+  },
+}));
 
 // ── BRIDGE PAIRING (stateless HMAC tokens — survives any restart) ─────────────
 // BRIDGE_SECRET is a server signing key, like JWT_SECRET. Set it once in your env.
