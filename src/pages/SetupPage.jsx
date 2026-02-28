@@ -25,6 +25,9 @@ const GATEWAY_PRESETS = [
 export default function SetupPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [url, setUrl] = useState(GATEWAY_PRESETS[0]?.url || 'http://127.0.0.1:18789');
   const [token, setToken] = useState('');
   const [testing, setTesting] = useState(false);
@@ -64,6 +67,30 @@ export default function SetupPage() {
     return () => clearInterval(countdownRef.current);
   }, [pairing.expiresAt]); // eslint-disable-line
 
+  // Check if this is first-time setup (no prior keys saved)
+  const isFirstSetup = !localStorage.getItem('vc_setup_done');
+
+  const goToStep2 = () => {
+    setStep(2);
+    if (isFirstSetup) {
+      localStorage.setItem('vc_setup_done', '1');
+      setTimeout(() => setShowEmailPrompt(true), 800);
+    }
+  };
+
+  const submitEmail = async () => {
+    if (!emailInput.trim()) { setShowEmailPrompt(false); return; }
+    try {
+      await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailInput.trim() }),
+      });
+    } catch {}
+    setEmailSubmitted(true);
+    setTimeout(() => setShowEmailPrompt(false), 1500);
+  };
+
   // Auto-poll for bridge status every 2s once pair code exists
   useEffect(() => {
     if (!pairing.pairId || pairing.connected) return;
@@ -77,7 +104,7 @@ export default function SetupPage() {
         if (data.bridgeId) setBridge(data.bridgeId);
         if (data.connected && data.bridgeId) {
           clearInterval(pollRef.current);
-          setTimeout(() => setStep(2), 600);
+          setTimeout(() => goToStep2(), 600);
         }
       } catch {}
     }, 2000);
@@ -99,7 +126,7 @@ export default function SetupPage() {
         setTestResult('ok');
         setGateway(url, token);
         if (openaiKey || groqKey) setApiKeys(openaiKey, groqKey);
-        setTimeout(() => setStep(2), 800);
+        setTimeout(() => goToStep2(), 800);
       } else {
         setTestResult('error');
         setTestError(data.error || 'Connection failed');
@@ -491,6 +518,45 @@ export default function SetupPage() {
       <p className="setup-footer-note">
         Bridge mode keeps all API keys on your machine. Direct gateway sends credentials via encrypted HTTPS.
       </p>
+
+      {/* Email capture modal — optional, first-time only */}
+      {showEmailPrompt && (
+        <div className="email-modal-overlay" onClick={() => setShowEmailPrompt(false)}>
+          <div className="email-modal" onClick={e => e.stopPropagation()}>
+            {emailSubmitted ? (
+              <div className="email-modal-success">
+                <CheckCircle size={28} color="#8b5cf6" />
+                <p>Thanks! We'll keep you posted.</p>
+              </div>
+            ) : (
+              <>
+                <h3 className="email-modal-title">Stay in the loop</h3>
+                <p className="email-modal-desc">
+                  Get notified about VoiceClaw updates and new features.{' '}
+                  <span className="email-modal-optional">Optional</span>
+                </p>
+                <input
+                  className="form-input"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={emailInput}
+                  onChange={e => setEmailInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && submitEmail()}
+                  autoFocus
+                />
+                <div className="email-modal-actions">
+                  <button className="setup-btn" onClick={submitEmail} disabled={!emailInput.trim()}>
+                    Get updates
+                  </button>
+                  <button className="setup-btn setup-btn--ghost" onClick={() => setShowEmailPrompt(false)}>
+                    Skip
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -41,7 +41,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Admin-Token');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -235,6 +235,7 @@ app.post('/api/bridge/pair/complete', pairCompleteLimiter, (req, res) => {
   metrics.pairCompleted += 1;
   markUniqueBridge(row.bridgeId);
   saveMetrics();
+  console.log(`[METRICS] pair_completed bridgeId=${row.bridgeId} device=${JSON.stringify(row.device)} total_paired=${metrics.pairCompleted} unique_bridges=${metrics.uniqueBridgeIds.length}`);
 
   res.json({ ok: true, pairId: targetId, bridgeId: row.bridgeId, wsToken, scope: 'tools_safe' });
 });
@@ -253,6 +254,53 @@ app.get('/api/admin/metrics', requireAdmin, (req, res) => {
       .filter(p => p.status === 'pending' && p.expiresAt > Date.now()).length,
     updatedAt: metrics.updatedAt,
   });
+});
+
+// ── Admin: reset metrics ──────────────────────────────────────────────────────
+app.post('/api/admin/reset-metrics', requireAdmin, (req, res) => {
+  metrics = defaultMetrics();
+  saveMetrics();
+  console.log('[METRICS] metrics_reset by admin');
+  res.json({ ok: true, message: 'Metrics reset', metrics });
+});
+
+// ── Subscribers (email lead gen) ──────────────────────────────────────────────
+const SUBSCRIBERS_FILE = path.join(METRICS_DIR, 'subscribers.json');
+
+function loadSubscribers() {
+  try {
+    if (!fs.existsSync(SUBSCRIBERS_FILE)) return [];
+    return JSON.parse(fs.readFileSync(SUBSCRIBERS_FILE, 'utf8'));
+  } catch { return []; }
+}
+
+function saveSubscribers(list) {
+  try {
+    if (!fs.existsSync(METRICS_DIR)) fs.mkdirSync(METRICS_DIR, { recursive: true });
+    fs.writeFileSync(SUBSCRIBERS_FILE, JSON.stringify(list, null, 2));
+  } catch (e) { console.error('Subscribers save failed:', e.message); }
+}
+
+const subscribeLimiter = makeLimiter(60 * 60 * 1000, 5, 'Too many subscribe requests');
+
+app.post('/api/subscribe', subscribeLimiter, (req, res) => {
+  const { email } = req.body || {};
+  if (!email || typeof email !== 'string') return res.status(400).json({ error: 'email required' });
+  const clean = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) return res.status(400).json({ error: 'invalid email' });
+
+  const list = loadSubscribers();
+  if (!list.find(s => s.email === clean)) {
+    list.push({ email: clean, subscribedAt: new Date().toISOString() });
+    saveSubscribers(list);
+    console.log(`[SUBSCRIBE] new_subscriber email=${clean} total=${list.length}`);
+  }
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/subscribers', requireAdmin, (req, res) => {
+  const list = loadSubscribers();
+  res.json({ count: list.length, subscribers: list });
 });
 
 // ── Bridge invoke ─────────────────────────────────────────────────────────────
@@ -631,6 +679,7 @@ wss.on('connection', (ws, req) => {
     metrics.bridgeConnectedEvents += 1;
     markUniqueBridge(bridgeId);
     saveMetrics();
+    console.log(`[METRICS] bridge_connected bridgeId=${bridgeId} total_connected_events=${metrics.bridgeConnectedEvents} active_now=${bridgeSockets.size}`);
 
     ws.on('message', (buf) => {
       try {
